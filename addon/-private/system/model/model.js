@@ -2,6 +2,7 @@ import { isNone } from '@ember/utils';
 import EmberError from '@ember/error';
 import Evented from '@ember/object/evented';
 import EmberObject, { computed, get } from '@ember/object';
+import { run } from '@ember/runloop';
 import { DEBUG } from '@glimmer/env';
 import { assert, warn, deprecate } from '@ember/debug';
 import { PromiseObject } from '../promise-proxies';
@@ -620,7 +621,12 @@ const Model = EmberObject.extend(Evented, {
   */
   destroyRecord(options) {
     this.deleteRecord();
-    return this.save(options);
+    return this.save(options).then(() => {
+      // the nested runloop here is necessary to ensure that the record is fully
+      //   destroyed prior to the promise resolving.
+      //   run.join is inadequate as the destroy queue would still be flushed after the resolve
+      run(() => this.unloadRecord());
+    });
   },
 
   /**
@@ -777,9 +783,12 @@ const Model = EmberObject.extend(Evented, {
     successfully or rejected if the adapter returns with an error.
   */
   save(options) {
+    return this._internalModel.save(options).then(() => this);
+    /*
     return PromiseObject.create({
       promise: this._internalModel.save(options).then(() => this),
     });
+    */
   },
 
   /**
