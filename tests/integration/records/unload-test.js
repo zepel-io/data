@@ -3074,3 +3074,31 @@ test('fetching records cancels unloading', function(assert) {
       .then(person => person.unloadRecord())
   );
 });
+
+test('unloading a record in a dirty isDeleted state errors', function(assert) {
+
+});
+
+test('unloading a record in a persisted isDeleted state purges the internalModel', function(assert) {
+
+});
+
+test('The ID of a former record that was deleted=>persisted=>unloaded record may be reused', function(assert) {
+
+});
+
+test('unloading a new un-persisted record purges the internalModel', function(assert) {
+
+});
+
+test('unloading a new un-persisted record with relationships purges the internalModel', function(assert) {
+
+});
+
+test('unloading a record with no-relationships completely purges the internalModel', function(assert) {
+
+});
+
+test('LEGACY-DELETE-BEHAVIOR: unloading a record with only sync-relationships completely purges the internalModel', function(assert) {
+
+});
