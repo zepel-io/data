@@ -4,6 +4,7 @@ import { resolve, Promise as EmberPromise } from 'rsvp';
 import { get } from '@ember/object';
 import { run } from '@ember/runloop';
 import { module, test } from 'qunit';
+import todo from '../../helpers/todo';
 import DS from 'ember-data';
 import setupStore from 'dummy/tests/helpers/store';
 import { testRecordData, skipRecordData } from 'dummy/tests/helpers/test-in-debug';
@@ -3075,30 +3076,335 @@ test('fetching records cancels unloading', function(assert) {
   );
 });
 
-test('unloading a record in a dirty isDeleted state errors', function(assert) {
+test('unloading a record in a dirty state sets it to isEmpty', function(assert) {
+  const store = env.store;
 
+  // populate initial record
+  let record = run(() =>
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Chris Thoburn',
+        },
+        relationships: {
+          bike: {
+            data: { type: 'bike', id: '1' },
+          },
+        },
+      },
+
+      included: [
+        {
+          id: '1',
+          type: 'bike',
+          attributes: {
+            name: 'mr bike',
+          },
+        },
+      ],
+    })
+  );
+
+  let internalModel = record._internalModel;
+
+  run(() => {
+    record.set('name', '@runspired');
+    record.unloadRecord();
+  });
+
+  assert.ok(internalModel.isEmpty(), 'the record is now empty');
 });
 
-test('unloading a record in a persisted isDeleted state purges the internalModel', function(assert) {
+test('an unloaded record cannot be dirtied', function(assert) {
+  const store = env.store;
 
+  // populate initial record
+  let record = run(() =>
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Chris Thoburn',
+        },
+        relationships: {
+          bike: {
+            data: { type: 'bike', id: '1' },
+          },
+        },
+      },
+
+      included: [
+        {
+          id: '1',
+          type: 'bike',
+          attributes: {
+            name: 'mr bike',
+          },
+        },
+      ],
+    })
+  );
+
+  let internalModel = record._internalModel;
+
+  run(() => {
+    record.set('name', '@runspired');
+    record.unloadRecord();
+  });
+
+  assert.ok(internalModel.isEmpty(), 'the record is now empty');
+
+  assert.expectAssertion(() => {
+    run(() => {
+      record.set('name', '@runspired2');
+    });
+  }, /Assertion Failed: calling set on destroyed object/);
 });
 
-test('The ID of a former record that was deleted=>persisted=>unloaded record may be reused', function(assert) {
+test('unloading a record in a dirty isDeleted state sets it to isEmpty', function(assert) {
+  const store = env.store;
 
+  // populate initial record
+  let record = run(() =>
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Chris Thoburn',
+        },
+        relationships: {
+          bike: {
+            data: { type: 'bike', id: '1' },
+          },
+        },
+      },
+
+      included: [
+        {
+          id: '1',
+          type: 'bike',
+          attributes: {
+            name: 'mr bike',
+          },
+        },
+      ],
+    })
+  );
+
+  let internalModel = record._internalModel;
+
+  run(() => {
+    record.deleteRecord();
+    record.unloadRecord();
+  });
+
+  assert.ok(internalModel.isEmpty(), 'the internalModel is now empty');
+  assert.ok(record.isDestroyed, 'the record is destroyed');
 });
 
-test('unloading a new un-persisted record purges the internalModel', function(assert) {
+test('unloading a record in a persisted isDeleted state purges the internalModel', async function(assert) {
+  const store = env.store;
 
+  env.adapter.deleteRecord = () => {
+    return resolve({ data: null });
+  };
+
+  // populate initial record
+  let record = run(() =>
+    store.push({
+      data: {
+        type: 'person',
+        id: '1',
+        attributes: {
+          name: 'Chris Thoburn',
+        },
+        relationships: {
+          house: {
+            data: { type: 'house', id: '1' },
+          },
+          mortgage: {
+            data: { type: 'mortgage', id: '1' },
+          },
+        },
+      },
+
+      included: [
+        {
+          id: '1',
+          type: 'house',
+          relationships: {
+            person: {
+              data: { type: 'person', id: '1' },
+            },
+          },
+        },
+        {
+          id: '1',
+          type: 'mortgage',
+          relationships: {
+            person: {
+              data: { type: 'person', id: '1' },
+            },
+          },
+        },
+      ],
+    })
+  );
+
+  let internalModel = record._internalModel;
+  let mortgage, house;
+
+  run(() => {
+    mortgage = store.peekRecord('mortgage', '1');
+    house = store.peekRecord('house', '1');
+    record.deleteRecord();
+
+    // TODO
+    // due to a bug in lazy-relationships
+    //  we must materialize the relationships now
+    //  this improves the case for never restoring
+    //  the lazy branch once RecordData lands
+    //
+    // If we do not materialize here, we will attempt
+    //  to fetch these relationships later in the test
+    //  using `person/1` instead of them being `null`
+    //  This bug is covered by the TODO version of this
+    //  this test.
+    mortgage.get('person');
+    house.get('person');
+  });
+
+  await run(() =>
+    record.save().then(() => {
+      record.unloadRecord();
+    })
+  );
+
+  assert.ok(internalModel.isEmpty(), 'the internalModel is now empty');
+  assert.ok(internalModel.isDestroyed, 'the internalModel is now destroyed');
+  assert.ok(record.isDestroyed, 'the record is destroyed');
+
+  let mortgageOwner = await run(() => mortgage.get('person').then(p => p));
+  let houseOwner = run(() => house.get('person'));
+
+  assert.equal(mortgageOwner, null);
+  assert.equal(houseOwner, null);
 });
 
-test('unloading a new un-persisted record with relationships purges the internalModel', function(assert) {
+todo(
+  '[BUG lazy-relationships] unloading a record in a persisted isDeleted state purges the internalModel',
+  async function(assert) {
+    const store = env.store;
 
+    env.adapter.deleteRecord = () => {
+      return resolve({ data: null });
+    };
+    env.adapter.findRecord = () => {
+      assert.todo.ok(false, 'We should not call findRecord');
+      return resolve({
+        data: { type: 'person', id: '1' },
+      });
+    };
+
+    // populate initial record
+    let record = run(() =>
+      store.push({
+        data: {
+          type: 'person',
+          id: '1',
+          attributes: {
+            name: 'Chris Thoburn',
+          },
+          relationships: {
+            house: {
+              data: { type: 'house', id: '1' },
+            },
+            mortgage: {
+              data: { type: 'mortgage', id: '1' },
+            },
+          },
+        },
+
+        included: [
+          {
+            id: '1',
+            type: 'house',
+            relationships: {
+              person: {
+                data: { type: 'person', id: '1' },
+              },
+            },
+          },
+          {
+            id: '1',
+            type: 'mortgage',
+            relationships: {
+              person: {
+                data: { type: 'person', id: '1' },
+              },
+            },
+          },
+        ],
+      })
+    );
+
+    let internalModel = record._internalModel;
+    let mortgage, house;
+
+    run(() => {
+      mortgage = store.peekRecord('mortgage', '1');
+      house = store.peekRecord('house', '1');
+      record.deleteRecord();
+    });
+
+    await run(() =>
+      record.save().then(() => {
+        record.unloadRecord();
+      })
+    );
+
+    assert.ok(internalModel.isEmpty(), 'the internalModel is now empty');
+    assert.ok(internalModel.isDestroyed, 'the internalModel is now destroyed');
+    assert.ok(record.isDestroyed, 'the record is destroyed');
+
+    let mortgageOwner = await run(() => mortgage.get('person').then(p => p));
+    let houseOwner = run(() => house.get('person'));
+
+    assert.todo.ok(mortgageOwner === null, 'mortgageOwner should be null');
+    assert.todo.ok(houseOwner === null, 'houseOwner should be null');
+  }
+);
+
+todo(
+  'The ID of a former record that was deleted=>persisted=>unloaded record may be reused',
+  function(assert) {
+    assert.todo.ok(false, 'No tests implemented');
+  }
+);
+
+todo('unloading a new un-persisted record purges the internalModel', function(assert) {
+  assert.todo.ok(false, 'No tests implemented');
 });
 
-test('unloading a record with no-relationships completely purges the internalModel', function(assert) {
-
+todo('unloading a new un-persisted record with relationships purges the internalModel', function(
+  assert
+) {
+  assert.todo.ok(false, 'No tests implemented');
 });
 
-test('LEGACY-DELETE-BEHAVIOR: unloading a record with only sync-relationships completely purges the internalModel', function(assert) {
-
+todo('unloading a record with no-relationships completely purges the internalModel', function(
+  assert
+) {
+  assert.todo.ok(false, 'No tests implemented');
 });
+
+todo(
+  'LEGACY-DELETE-BEHAVIOR: unloading a record with only sync-relationships completely purges the internalModel',
+  function(assert) {
+    assert.todo.ok(false, 'No tests implemented');
+  }
+);
