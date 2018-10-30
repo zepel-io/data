@@ -127,8 +127,8 @@ export default class InternalModelMap {
     this._models = [];
 
     for (let i = 0; i < internalModels.length; i++) {
-      let internalModels = internalModels[i];
-      internalModels.unloadRecord();
+      let internalModel = internalModels[i];
+      internalModel.unloadRecord();
     }
 
     this._metadata = null;
