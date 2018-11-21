@@ -14,7 +14,6 @@ import Service from '@ember/service';
 import { typeOf, isPresent, isNone } from '@ember/utils';
 
 import Ember from 'ember';
-import { InvalidError } from '@ember-data/adapter/error';
 import { assert, deprecate, warn, inspect } from '@ember/debug';
 import { DEBUG } from '@glimmer/env';
 import Model from './model/model';
@@ -29,9 +28,12 @@ import { _bind, _guard, _objectIsAlive, guardDestroyedStore } from './store/comm
 import { normalizeResponseHelper } from './store/serializer-response';
 import { serializerForAdapter } from './store/serializers';
 import recordDataFor from './record-data-for';
+import ShimModelClass from './model/shim-model-class';
+import FetchManager from './fetch-manager';
+import { identifierFor, RecordIdentifier } from './record-identifier';
+import { AdapterCache } from './adapter-cache';
 
 import {
-  _find,
   _findMany,
   _findHasMany,
   _findBelongsTo,
@@ -184,11 +186,11 @@ const Store = Service.extend({
     // used for coalescing internal model updates
     this._updatedInternalModels = [];
 
-    // used to keep track of all the find requests that need to be coalesced
-    this._pendingFetch = new Map();
 
-    this._adapterCache = Object.create(null);
     this._serializerCache = Object.create(null);
+    this._adapterCache = new AdapterCache(this);
+
+    this._fetchManager = new FetchManager(this._adapterCache, this);
 
     this.storeWrapper = new RecordDataStoreWrapper(this);
 
@@ -247,6 +249,10 @@ const Store = Service.extend({
     }
   },
 
+  requestCache: computed(function () {
+    return this._fetchManager.requestCache;
+  }),
+
   /**
     The default adapter to use to communicate to a backend server or
     other persistence layer. This will be overridden by an application
@@ -283,7 +289,7 @@ const Store = Service.extend({
     @private
     @return DS.Adapter
   */
-  defaultAdapter: computed('adapter', function() {
+  defaultAdapter: computed('adapter', function () {
     let adapter = get(this, 'adapter');
 
     assert(
@@ -418,6 +424,9 @@ const Store = Service.extend({
     record.deleteRecord();
   },
 
+  _internalDeleteRecord(internalModel) {
+    return internalModel.deleteRecord();
+  },
   /**
     For symmetry, a record can be unloaded via the store.
     This will cause the record to be destroyed and freed up for garbage collection.
@@ -746,6 +755,7 @@ const Store = Service.extend({
       return this._scheduleFetch(internalModel, options);
     }
 
+
     let snapshot = internalModel.createSnapshot(options);
     let adapter = this.adapterFor(internalModel.modelName);
 
@@ -767,7 +777,7 @@ const Store = Service.extend({
     return Promise.resolve(internalModel);
   },
 
-  _findByInternalModel(internalModel, options = {}) {
+  _findByInternalModel(internalModel, options: any = {}) {
     if (options.preload) {
       internalModel.preloadData(options.preload);
     }
@@ -781,6 +791,7 @@ const Store = Service.extend({
   },
 
   _findEmptyInternalModel(internalModel, options) {
+    debugger
     if (internalModel.isEmpty()) {
       return this._scheduleFetch(internalModel, options);
     }
@@ -826,29 +837,6 @@ const Store = Service.extend({
     );
   },
 
-  /**
-    This method is called by `findRecord` if it discovers that a particular
-    type/id pair hasn't been loaded yet to kick off a request to the
-    adapter.
-
-    @method _fetchRecord
-    @private
-    @param {InternalModel} internalModel model
-    @return {Promise} promise
-   */
-  _fetchRecord(internalModel, options) {
-    let modelName = internalModel.modelName;
-    let adapter = this.adapterFor(modelName);
-
-    assert(`You tried to find a record but you have no adapter (for ${modelName})`, adapter);
-    assert(
-      `You tried to find a record but your adapter (for ${modelName}) does not implement 'findRecord'`,
-      typeof adapter.findRecord === 'function'
-    );
-
-    return _find(adapter, this, internalModel.type, internalModel.id, internalModel, options);
-  },
-
   _scheduleFetchMany(internalModels, options) {
     let fetches = new Array(internalModels.length);
 
@@ -860,200 +848,7 @@ const Store = Service.extend({
   },
 
   _scheduleFetch(internalModel, options) {
-    if (internalModel._promiseProxy) {
-      return internalModel._promiseProxy;
-    }
-
-    let { id, modelName } = internalModel;
-    let resolver = RSVP.defer(`Fetching ${modelName}' with id: ${id}`);
-    let pendingFetchItem = {
-      internalModel,
-      resolver,
-      options,
-    };
-
-    if (DEBUG) {
-      if (this.generateStackTracesForTrackedRequests === true) {
-        let trace;
-
-        try {
-          throw new Error(`Trace Origin for scheduled fetch for ${modelName}:${id}.`);
-        } catch (e) {
-          trace = e;
-        }
-
-        // enable folks to discover the origin of this findRecord call when
-        // debugging. Ideally we would have a tracked queue for requests with
-        // labels or local IDs that could be used to merge this trace with
-        // the trace made available when we detect an async leak
-        pendingFetchItem.trace = trace;
-      }
-    }
-
-    let promise = resolver.promise;
-
-    internalModel.loadingData(promise);
-    if (this._pendingFetch.size === 0) {
-      emberRun.schedule('actions', this, this.flushAllPendingFetches);
-    }
-
-    let fetches = this._pendingFetch;
-    if (!fetches.has(modelName)) {
-      fetches.set(modelName, []);
-    }
-
-    fetches.get(modelName).push(pendingFetchItem);
-
-    return promise;
-  },
-
-  flushAllPendingFetches() {
-    if (this.isDestroyed || this.isDestroying) {
-      return;
-    }
-
-    this._pendingFetch.forEach(this._flushPendingFetchForType, this);
-    this._pendingFetch.clear();
-  },
-
-  _flushPendingFetchForType(pendingFetchItems, modelName) {
-    let store = this;
-    let adapter = store.adapterFor(modelName);
-    let shouldCoalesce = !!adapter.findMany && adapter.coalesceFindRequests;
-    let totalItems = pendingFetchItems.length;
-    let internalModels = new Array(totalItems);
-    let seeking = Object.create(null);
-
-    let optionsMap = new WeakMap();
-
-    for (let i = 0; i < totalItems; i++) {
-      let pendingItem = pendingFetchItems[i];
-      let internalModel = pendingItem.internalModel;
-      internalModels[i] = internalModel;
-      optionsMap.set(internalModel, pendingItem.options);
-      seeking[internalModel.id] = pendingItem;
-    }
-
-    function _fetchRecord(recordResolverPair) {
-      let recordFetch = store._fetchRecord(
-        recordResolverPair.internalModel,
-        recordResolverPair.options
-      );
-
-      recordResolverPair.resolver.resolve(recordFetch);
-    }
-
-    function handleFoundRecords(foundInternalModels, expectedInternalModels) {
-      // resolve found records
-      let found = Object.create(null);
-      for (let i = 0, l = foundInternalModels.length; i < l; i++) {
-        let internalModel = foundInternalModels[i];
-        let pair = seeking[internalModel.id];
-        found[internalModel.id] = internalModel;
-
-        if (pair) {
-          let resolver = pair.resolver;
-          resolver.resolve(internalModel);
-        }
-      }
-
-      // reject missing records
-      let missingInternalModels = [];
-
-      for (let i = 0, l = expectedInternalModels.length; i < l; i++) {
-        let internalModel = expectedInternalModels[i];
-
-        if (!found[internalModel.id]) {
-          missingInternalModels.push(internalModel);
-        }
-      }
-
-      if (missingInternalModels.length) {
-        warn(
-          'Ember Data expected to find records with the following ids in the adapter response but they were missing: [ "' +
-            missingInternalModels.map(r => r.id).join('", "') +
-            '" ]',
-          false,
-          {
-            id: 'ds.store.missing-records-from-adapter',
-          }
-        );
-        rejectInternalModels(missingInternalModels);
-      }
-    }
-
-    function rejectInternalModels(internalModels, error) {
-      for (let i = 0, l = internalModels.length; i < l; i++) {
-        let internalModel = internalModels[i];
-        let pair = seeking[internalModel.id];
-
-        if (pair) {
-          pair.resolver.reject(
-            error ||
-              new Error(
-                `Expected: '${internalModel}' to be present in the adapter provided payload, but it was not found.`
-              )
-          );
-        }
-      }
-    }
-
-    if (shouldCoalesce) {
-      // TODO: Improve records => snapshots => records => snapshots
-      //
-      // We want to provide records to all store methods and snapshots to all
-      // adapter methods. To make sure we're doing that we're providing an array
-      // of snapshots to adapter.groupRecordsForFindMany(), which in turn will
-      // return grouped snapshots instead of grouped records.
-      //
-      // But since the _findMany() finder is a store method we need to get the
-      // records from the grouped snapshots even though the _findMany() finder
-      // will once again convert the records to snapshots for adapter.findMany()
-      let snapshots = new Array(totalItems);
-      for (let i = 0; i < totalItems; i++) {
-        snapshots[i] = internalModels[i].createSnapshot(optionsMap.get(internalModel));
-      }
-
-      let groups = adapter.groupRecordsForFindMany(this, snapshots);
-
-      for (var i = 0, l = groups.length; i < l; i++) {
-        var group = groups[i];
-        var totalInGroup = groups[i].length;
-        var ids = new Array(totalInGroup);
-        var groupedInternalModels = new Array(totalInGroup);
-
-        for (var j = 0; j < totalInGroup; j++) {
-          var internalModel = group[j]._internalModel;
-
-          groupedInternalModels[j] = internalModel;
-          ids[j] = internalModel.id;
-        }
-
-        if (totalInGroup > 1) {
-          (function(groupedInternalModels) {
-            _findMany(adapter, store, modelName, ids, groupedInternalModels, optionsMap)
-              .then(function(foundInternalModels) {
-                handleFoundRecords(foundInternalModels, groupedInternalModels);
-              })
-              .catch(function(error) {
-                rejectInternalModels(groupedInternalModels, error);
-              });
-          })(groupedInternalModels);
-        } else if (ids.length === 1) {
-          var pair = seeking[groupedInternalModels[0].id];
-          _fetchRecord(pair);
-        } else {
-          assert(
-            "You cannot return an empty array from adapter's method groupRecordsForFindMany",
-            false
-          );
-        }
-      }
-    } else {
-      for (let i = 0; i < totalItems; i++) {
-        _fetchRecord(pendingFetchItems[i]);
-      }
-    }
+    return this._fetchManager.scheduleFetch(identifierFor(internalModel), options, this.generateStackTracesForTrackedRequests);
   },
 
   /**
@@ -1161,6 +956,7 @@ const Store = Service.extend({
     @return {Promise} promise
   */
   _reloadRecord(internalModel, options) {
+    options.isReloading = true;
     let { id, modelName } = internalModel;
     let adapter = this.adapterFor(modelName);
 
@@ -1317,7 +1113,7 @@ const Store = Service.extend({
 
     assert(
       `You tried to load a hasMany relationship but you have no adapter (for ${
-        internalModel.modelName
+      internalModel.modelName
       })`,
       adapter
     );
@@ -1357,7 +1153,7 @@ const Store = Service.extend({
         relationshipMeta,
         options
       ).then(internalModels => {
-        let payload = { data: internalModels.map(im => recordDataFor(im).getResourceIdentifier()) };
+        let payload: any = { data: internalModels.map(im => recordDataFor(im).getResourceIdentifier()) };
         if (internalModels.meta !== undefined) {
           payload.meta = internalModels.meta;
         }
@@ -1410,6 +1206,7 @@ const Store = Service.extend({
     @return {Promise} promise
   */
   findBelongsTo(internalModel, link, relationship, options) {
+    debugger
     if (DEBUG) {
       assertDestroyingStore(this, 'findBelongsTo');
     }
@@ -1417,7 +1214,7 @@ const Store = Service.extend({
 
     assert(
       `You tried to load a belongsTo relationship but you have no adapter (for ${
-        internalModel.modelName
+      internalModel.modelName
       })`,
       adapter
     );
@@ -1585,7 +1382,7 @@ const Store = Service.extend({
       typeof modelName === 'string'
     );
 
-    let adapterOptionsWrapper = {};
+    let adapterOptionsWrapper: any = {};
 
     if (options && options.adapterOptions) {
       adapterOptionsWrapper.adapterOptions = options.adapterOptions;
@@ -1724,7 +1521,7 @@ const Store = Service.extend({
 
     let normalizedModelName = normalizeModelName(modelName);
     let adapter = this.adapterFor(normalizedModelName);
-    let adapterOptionsWrapper = {};
+    let adapterOptionsWrapper: any = {};
 
     if (options && options.adapterOptions) {
       adapterOptionsWrapper.adapterOptions = options.adapterOptions;
@@ -1965,7 +1762,7 @@ const Store = Service.extend({
     @param {DS.RecordArray} array
     @return {Promise} promise
   */
-  _fetchAll(modelName, array, options = {}) {
+  _fetchAll(modelName, array, options: any = {}) {
     let adapter = this.adapterFor(modelName);
     let sinceToken = this._internalModelsFor(modelName).metadata.since;
 
@@ -2099,50 +1896,56 @@ const Store = Service.extend({
     @param {Resolver} resolver
     @param {Object} options
   */
-  scheduleSave(internalModel, resolver, options) {
-    let snapshot = internalModel.createSnapshot(options);
-    internalModel.adapterWillCommit();
-    this._pendingSave.push({
-      snapshot: snapshot,
-      resolver: resolver,
-    });
-    emberRun.scheduleOnce('actions', this, this.flushPendingSave);
-  },
+  scheduleSave(internalModel, options) {
+    let promiseLabel = 'DS: Model#save ' + this;
+    let resolver = RSVP.defer(promiseLabel);
+    let recordData: RelationshipRecordData = internalModel._recordData;
 
-  /**
-    This method is called at the end of the run loop, and
-    flushes any records passed into `scheduleSave`
-
-    @method flushPendingSave
-    @private
-  */
-  flushPendingSave() {
-    let pending = this._pendingSave.slice();
-    this._pendingSave = [];
-
-    for (let i = 0, j = pending.length; i < j; i++) {
-      let pendingItem = pending[i];
-      let snapshot = pendingItem.snapshot;
-      let resolver = pendingItem.resolver;
-      let internalModel = snapshot._internalModel;
-      let adapter = this.adapterFor(internalModel.modelName);
-      let operation;
-
-      if (internalModel.currentState.stateName === 'root.deleted.saved') {
-        resolver.resolve();
-        continue;
-      } else if (internalModel.isNew()) {
-        operation = 'createRecord';
-      } else if (internalModel.isDeleted()) {
-        operation = 'deleteRecord';
-      } else {
-        operation = 'updateRecord';
-      }
-
-      resolver.resolve(_commit(adapter, this, operation, snapshot));
+    if (recordData.isNew() && recordData.isDeleted()) {
+      // TODO should probably warn here
+      resolver.resolve();
+      return resolver.promise;
     }
+
+
+    internalModel._recordData.willCommit();
+    //TODO Remove
+    internalModel.send('willCommit');
+    let promise = this._fetchManager.scheduleSave(identifierFor(internalModel), options);
+    promise = promise.then(payload => {
+      /*
+      Note to future spelunkers hoping to optimize.
+      We rely on this `run` to create a run loop if needed
+      that `store._push` and `store.didSaveRecord` will both share.
+ 
+      We use `join` because it is often the case that we
+      have an outer run loop available still from the first
+      call to `store._push`;
+     */
+      this._backburner.join(() => {
+        let data = payload && payload.data;
+        this.didSaveRecord(internalModel, { data });
+        // seems risky, but if the tests pass might be fine?
+        if (payload && payload.included) {
+          this._push({ data: null, included: payload.included });
+        }
+      });
+    },
+      (originalAndParsedError) => {
+        this.recordWasInvalid(internalModel, originalAndParsedError);
+        let error = Object.assign({}, originalAndParsedError);
+        delete error.parsedErrors;
+        throw error;
+      });
+
+    return promise;
   },
 
+
+  // TDO Deprecate/noop warn  
+  recordWasError() {
+
+  },
   /**
     This method is called once the promise returned by an
     adapter's `createRecord`, `updateRecord` or `deleteRecord`
@@ -2167,7 +1970,7 @@ const Store = Service.extend({
     if (!data) {
       assert(
         `Your ${
-          internalModel.modelName
+        internalModel.modelName
         } record was saved to the server, but the response does not have an id and no id has been set client side. Records must have ids. Please update the server response to provide an id in the response or generate the id on the client side either before saving the record or while normalizing the response.`,
         internalModel.id
       );
@@ -2183,33 +1986,17 @@ const Store = Service.extend({
     adapter's `createRecord`, `updateRecord` or `deleteRecord`
     is rejected with a `DS.InvalidError`.
 
-    @method recordWasInvalid
+    @method alid
     @private
     @param {InternalModel} internalModel
     @param {Object} errors
   */
   recordWasInvalid(internalModel, errors) {
+    debugger
     if (DEBUG) {
       assertDestroyingStore(this, 'recordWasInvalid');
     }
     internalModel.adapterDidInvalidate(errors);
-  },
-
-  /**
-    This method is called once the promise returned by an
-    adapter's `createRecord`, `updateRecord` or `deleteRecord`
-    is rejected (with anything other than a `DS.InvalidError`).
-
-    @method recordWasError
-    @private
-    @param {InternalModel} internalModel
-    @param {Error} error
-  */
-  recordWasError(internalModel, error) {
-    if (DEBUG) {
-      assertDestroyingStore(this, 'recordWasError');
-    }
-    internalModel.adapterDidError(error);
   },
 
   /**
@@ -2339,7 +2126,16 @@ const Store = Service.extend({
     let maybeFactory = this._modelFactoryFor(modelName);
 
     // for factorFor factory/class split
-    return maybeFactory.class ? maybeFactory.class : maybeFactory;
+    let klass = maybeFactory.class ? maybeFactory.class : maybeFactory;
+    if (!klass.isModel) {
+      return new ShimModelClass(this, modelName);
+    } else {
+      return klass;
+    }
+  },
+
+  instantiateRecord(modelName, createOptions) {
+    return this._modelFactoryFor(modelName).create(createOptions);
   },
 
   _modelFactoryFor(modelName) {
@@ -2376,6 +2172,9 @@ const Store = Service.extend({
   @private
  */
   _hasModelFor(modelName) {
+    // TODO NOW
+    // remove 
+    // return true;
     if (DEBUG) {
       assertDestroyingStore(this, '_hasModelFor');
     }
@@ -2568,7 +2367,7 @@ const Store = Service.extend({
     @param {Object} jsonApiDoc
     @return {DS.InternalModel|Array<DS.InternalModel>} pushed InternalModel(s)
   */
-  _push(jsonApiDoc) {
+  _push(jsonApiDoc: any) {
     if (DEBUG) {
       assertDestroyingStore(this, '_push');
     }
@@ -2596,12 +2395,14 @@ const Store = Service.extend({
         return null;
       }
 
+      /*
       assert(
         `Expected an object in the 'data' property in a call to 'push' for ${
           jsonApiDoc.type
         }, but was ${typeOf(jsonApiDoc.data)}`,
         typeOf(jsonApiDoc.data) === 'object'
       );
+      */
 
       return this._pushInternalModel(jsonApiDoc.data);
     });
@@ -2787,7 +2588,7 @@ const Store = Service.extend({
   },
 
   _createRecordData(modelName, id, clientId, internalModel) {
-    return this.createRecordDataFor(modelName, id, clientId, this.storeWrapper);
+    return this.createRecordDataFor(modelName, id, clientId, this.recordDataWrapper);
   },
 
   createRecordDataFor(modelName, id, clientId, storeWrapper) {
@@ -2797,6 +2598,26 @@ const Store = Service.extend({
   recordDataFor(modelName, id, clientId) {
     let internalModel = this._internalModelForId(modelName, id, clientId);
     return recordDataFor(internalModel);
+  },
+
+  recordDataForIdentifier(identifier: RecordIdentifier): RecordData {
+    //TODO TEMP
+    let modelName = identifier.type;
+    let id = identifier.id;
+    let clientId = identifier.lid;
+    let internalModel = this._internalModelForId(modelName, id, clientId);
+    return recordDataFor(internalModel);
+  },
+
+  _internalModelForIdentifier(identifier: RecordIdentifier): InternalModel {
+    let internalModel;
+    if (identifier.lid) {
+      internalModel = this._newlyCreatedModelsFor(identifier.type).get(identifier.lid);
+    }
+    if (!internalModel) {
+      internalModel = this._internalModelForId(identifier.type, identifier.id);
+    }
+    return internalModel;
   },
 
   _internalModelForRecordData(recordData) {
@@ -2946,65 +2767,12 @@ const Store = Service.extend({
     @param {String} modelName
     @return DS.Adapter
   */
-  adapterFor(modelName) {
+  adapterFor(modelName:string): any {
     if (DEBUG) {
       assertDestroyingStore(this, 'adapterFor');
     }
-    assert(`You need to pass a model name to the store's adapterFor method`, isPresent(modelName));
-    assert(
-      `Passing classes to store.adapterFor has been removed. Please pass a dasherized string instead of ${modelName}`,
-      typeof modelName === 'string'
-    );
-    let normalizedModelName = normalizeModelName(modelName);
-
-    let { _adapterCache } = this;
-    let adapter = _adapterCache[normalizedModelName];
-    if (adapter) {
-      return adapter;
-    }
-
-    let owner = getOwner(this);
-
-    adapter = owner.lookup(`adapter:${normalizedModelName}`);
-    if (adapter !== undefined) {
-      set(adapter, 'store', this);
-      _adapterCache[normalizedModelName] = adapter;
-      return adapter;
-    }
-
-    // no adapter found for the specific model, fallback and check for application adapter
-    adapter = _adapterCache.application || owner.lookup('adapter:application');
-    if (adapter !== undefined) {
-      set(adapter, 'store', this);
-      _adapterCache[normalizedModelName] = adapter;
-      _adapterCache.application = adapter;
-      return adapter;
-    }
-
-    // no model specific adapter or application adapter, check for an `adapter`
-    // property defined on the store
-    let adapterName = this.get('adapter');
-    adapter = adapterName
-      ? _adapterCache[adapterName] || owner.lookup(`adapter:${adapterName}`)
-      : undefined;
-    if (adapter !== undefined) {
-      set(adapter, 'store', this);
-      _adapterCache[normalizedModelName] = adapter;
-      _adapterCache[adapterName] = adapter;
-      return adapter;
-    }
-
-    // final fallback, no model specific adapter, no application adapter, no
-    // `adapter` property on store: use json-api adapter
-    adapter = _adapterCache['-json-api'] || owner.lookup('adapter:-json-api');
-    assert(
-      `No adapter was found for '${modelName}' and no 'application', store.adapter = 'adapter-fallback-name', or '-json-api' adapter were found as fallbacks.`,
-      adapter !== undefined
-    );
-    set(adapter, 'store', this);
-    _adapterCache[normalizedModelName] = adapter;
-    _adapterCache['-json-api'] = adapter;
-    return adapter;
+    // TODO Ask Runspired about perf impact
+    this._adapterCache.adapterFor(modelName);
   },
 
   // ..............................
@@ -3118,12 +2886,12 @@ const Store = Service.extend({
         if (shouldTrack) {
           throw new Error(
             'Async Request leaks detected. Add a breakpoint here and set `store.generateStackTracesForTrackedRequests = true;`to inspect traces for leak origins:\n\t - ' +
-              tracked.map(o => o.label).join('\n\t - ')
+            tracked.map(o => o.label).join('\n\t - ')
           );
         } else {
           warn(
             'Async Request leaks detected. Add a breakpoint here and set `store.generateStackTracesForTrackedRequests = true;`to inspect traces for leak origins:\n\t - ' +
-              tracked.map(o => o.label).join('\n\t - '),
+            tracked.map(o => o.label).join('\n\t - '),
             false,
             {
               id: 'ds.async.leak.detected',
@@ -3179,11 +2947,11 @@ const Store = Service.extend({
 
     assert(
       `A ${
-        relationship.internalModel.modelName
+      relationship.internalModel.modelName
       } record was pushed into the store with the value of ${relationship.key} being ${inspect(
         resourceIdentifier
       )}, but ${
-        relationship.key
+      relationship.key
       } is a belongsTo relationship so the value must not be an array. You should probably check your data payload or serializer.`,
       !Array.isArray(resourceIdentifier)
     );
@@ -3199,11 +2967,11 @@ const Store = Service.extend({
 
     assert(
       `A ${
-        relationship.internalModel.modelName
+      relationship.internalModel.modelName
       } record was pushed into the store with the value of ${relationship.key} being '${inspect(
         resourceIdentifiers
       )}', but ${
-        relationship.key
+      relationship.key
       } is a hasMany relationship so the value must be an array. You should probably check your data payload or serializer.`,
       Array.isArray(resourceIdentifiers)
     );
@@ -3215,79 +2983,6 @@ const Store = Service.extend({
     return _internalModels;
   },
 });
-
-function _commit(adapter, store, operation, snapshot) {
-  let internalModel = snapshot._internalModel;
-  let modelName = snapshot.modelName;
-  let modelClass = store.modelFor(modelName);
-  assert(`You tried to update a record but you have no adapter (for ${modelName})`, adapter);
-  assert(
-    `You tried to update a record but your adapter (for ${modelName}) does not implement '${operation}'`,
-    typeof adapter[operation] === 'function'
-  );
-
-  let promise = Promise.resolve().then(() => adapter[operation](store, modelClass, snapshot));
-  let serializer = serializerForAdapter(store, adapter, modelName);
-  let label = `DS: Extract and notify about ${operation} completion of ${internalModel}`;
-
-  assert(
-    `Your adapter's '${operation}' method must return a value, but it returned 'undefined'`,
-    promise !== undefined
-  );
-
-  promise = guardDestroyedStore(promise, store, label);
-  promise = _guard(promise, _bind(_objectIsAlive, internalModel));
-
-  return promise.then(
-    adapterPayload => {
-      /*
-      Note to future spelunkers hoping to optimize.
-      We rely on this `run` to create a run loop if needed
-      that `store._push` and `store.didSaveRecord` will both share.
-
-      We use `join` because it is often the case that we
-      have an outer run loop available still from the first
-      call to `store._push`;
-     */
-      store._backburner.join(() => {
-        let payload, data, sideloaded;
-        if (adapterPayload) {
-          payload = normalizeResponseHelper(
-            serializer,
-            store,
-            modelClass,
-            adapterPayload,
-            snapshot.id,
-            operation
-          );
-          if (payload.included) {
-            sideloaded = payload.included;
-          }
-          data = payload.data;
-        }
-        store.didSaveRecord(internalModel, { data });
-        // seems risky, but if the tests pass might be fine?
-        if (sideloaded) {
-          store._push({ data: null, included: sideloaded });
-        }
-      });
-
-      return internalModel;
-    },
-    function(error) {
-      if (error instanceof InvalidError) {
-        let errors = serializer.extractErrors(store, modelClass, error, snapshot.id);
-
-        store.recordWasInvalid(internalModel, errors);
-      } else {
-        store.recordWasError(internalModel, error);
-      }
-
-      throw error;
-    },
-    label
-  );
-}
 
 /**
  *
@@ -3313,12 +3008,14 @@ function getModelFactory(store, cache, normalizedModelName) {
     }
 
     let klass = factory.class;
-    assert(`'${inspect(klass)}' does not appear to be an ember-data model`, klass.isModel);
+    // assert(`'${inspect(klass)}' does not appear to be an ember-data model`, klass.isModel);
 
     // TODO: deprecate this
-    let hasOwnModelNameSet = klass.modelName && klass.hasOwnProperty('modelName');
-    if (!hasOwnModelNameSet) {
-      klass.modelName = normalizedModelName;
+    if (klass.isModel) {
+      let hasOwnModelNameSet = klass.modelName && klass.hasOwnProperty('modelName');
+      if (!hasOwnModelNameSet) {
+        klass.modelName = normalizedModelName;
+      }
     }
 
     cache[normalizedModelName] = factory;

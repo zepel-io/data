@@ -249,8 +249,7 @@ export default class InternalModel {
         store,
         _internalModel: this,
         currentState: this.currentState,
-        isError: this.isError,
-        adapterError: this.error,
+        container: null
       };
 
       if (properties !== undefined) {
@@ -300,7 +299,7 @@ export default class InternalModel {
         createOptions.container = store.container;
       }
 
-      this._record = store._modelFactoryFor(this.modelName).create(createOptions);
+      this._record = store.instantiateRecord(this.modelName, createOptions);
 
       this._triggerDeferredTriggers();
     }
@@ -356,22 +355,18 @@ export default class InternalModel {
   }
 
   deleteRecord() {
+    this._recordData.deleteRecord();
     this.send('deleteRecord');
   }
 
   save(options) {
-    let promiseLabel = 'DS: Model#save ' + this;
-    let resolver = RSVP.defer(promiseLabel);
-
-    this.store.scheduleSave(this, resolver, options);
-    return resolver.promise;
+    return this.store.scheduleSave(this, options);
   }
 
   startedReloading() {
-    this.isReloading = true;
-    if (this.hasRecord) {
-      set(this._record, 'isReloading', true);
+    /*
     }
+    */
   }
 
   linkWasLoadedForRelationship(key, data) {
@@ -385,27 +380,23 @@ export default class InternalModel {
   }
 
   finishedReloading() {
-    this.isReloading = false;
-    if (this.hasRecord) {
-      set(this._record, 'isReloading', false);
-    }
   }
 
   reload(options) {
+    if (!options) {
+      options = {};
+    }
     this.startedReloading();
     let internalModel = this;
     let promiseLabel = 'DS: Model#reload of ' + this;
 
-    return new Promise(function(resolve) {
-      internalModel.send('reloadRecord', { resolve, options });
-    }, promiseLabel)
+      return internalModel.store._reloadRecord(internalModel, options)
       .then(
         function() {
-          internalModel.didCleanError();
+          //TODO NOW seems like we shouldn't need to do this
           return internalModel;
         },
         function(error) {
-          internalModel.didError(error);
           throw error;
         },
         'DS: Model#reload complete, update flags'
@@ -654,6 +645,7 @@ export default class InternalModel {
         return loadingPromise;
       }
       /* TODO Igor check wtf this is about
+      TODO NOW
       if (loadingPromise.get('isRejected')) {
         manyArray.set('isLoaded', manyArrayLoadedState);
       }
@@ -694,9 +686,10 @@ export default class InternalModel {
   }
 
   destroy() {
+    // TODO add a better check for ED model
     assert(
       'Cannot destroy an internalModel while its record is materialized',
-      !this._record || this._record.get('isDestroyed') || this._record.get('isDestroying')
+      !this._record || (this._record.get && this._record.get('isDestroyed')) || (this._record.get && this._record.get('isDestroying'))
     );
     this.isDestroying = true;
     Object.keys(this._retainedManyArrayCache).forEach(key => {
@@ -832,8 +825,6 @@ export default class InternalModel {
     @private
   */
   adapterWillCommit() {
-    this._recordData.willCommit();
-    this.send('willCommit');
   }
 
   /*
@@ -896,6 +887,7 @@ export default class InternalModel {
     }
   }
 
+  //TODO NOW have to disentangle hasMany handling from change notifying
   notifyPropertyChange(key) {
     if (this.hasRecord) {
       this._record.notifyPropertyChange(key);
@@ -921,9 +913,6 @@ export default class InternalModel {
 
   rollbackAttributes() {
     let dirtyKeys = this._recordData.rollbackAttributes();
-    if (get(this, 'isError')) {
-      this.didCleanError();
-    }
 
     this.send('rolledBack');
 
@@ -1133,29 +1122,6 @@ export default class InternalModel {
     }
   }
 
-  didError(error) {
-    this.error = error;
-    this.isError = true;
-
-    if (this.hasRecord) {
-      this._record.setProperties({
-        isError: true,
-        adapterError: error,
-      });
-    }
-  }
-
-  didCleanError() {
-    this.error = null;
-    this.isError = false;
-
-    if (this.hasRecord) {
-      this._record.setProperties({
-        isError: false,
-        adapterError: null,
-      });
-    }
-  }
 
   /*
     If the adapter did not return a hash in response to a commit,
@@ -1165,7 +1131,6 @@ export default class InternalModel {
     @method adapterDidCommit
   */
   adapterDidCommit(data) {
-    this.didCleanError();
 
     let changedKeys = this._recordData.didCommit(data);
 
@@ -1179,22 +1144,8 @@ export default class InternalModel {
     this._record._notifyProperties(changedKeys);
   }
 
-  addErrorMessageToAttribute(attribute, message) {
-    get(this.getRecord(), 'errors')._add(attribute, message);
-  }
-
-  removeErrorMessageFromAttribute(attribute) {
-    get(this.getRecord(), 'errors')._remove(attribute);
-  }
-
-  clearErrorMessages() {
-    get(this.getRecord(), 'errors')._clear();
-  }
-
   hasErrors() {
-    let errors = get(this.getRecord(), 'errors');
-
-    return errors.get('length') > 0;
+    return this._recordData.getErrors().length > 0;
   }
 
   // FOR USE DURING COMMIT PROCESS
@@ -1205,28 +1156,40 @@ export default class InternalModel {
   */
   adapterDidInvalidate(errors) {
     let attribute;
-
-    for (attribute in errors) {
-      if (errors.hasOwnProperty(attribute)) {
-        this.addErrorMessageToAttribute(attribute, errors[attribute]);
-      }
+    if (errors && errors.parsedErrors) {
+      let jsonApiErrors: JsonApiValidationError[] = errorsHashToArray(errors.parsedErrors);
+      this.send('becameInvalid');
+      this._recordData.commitWasRejected(jsonApiErrors);
+    } else {
+      this._recordData.commitWasRejected();
     }
+  }
 
-    this.send('becameInvalid');
+  notifyErrorsChange() {
+    let jsonApiErrors = this._recordData.getErrors() || [];
+    // TODO NOW tighten this check
+    let invalidErrors: JsonApiValidationError[] = jsonApiErrors.filter((err) => err.source !== undefined && err.title !== undefined) as JsonApiValidationError[];
+    this.notifyInvalidErrorsChange(invalidErrors);
+  }
 
-    this._recordData.commitWasRejected();
+  notifyInvalidErrorsChange(jsonApiErrors: JsonApiValidationError[]) {
+    this.getRecord().invalidErrorsChanged(jsonApiErrors);
   }
 
   /*
-    @method adapterDidError
+    @method adapterror
     @private
-  */
   adapterDidError(error) {
     this.send('becameError');
-    this.didError(error);
 
-    this._recordData.commitWasRejected();
+    if (error === undefined) {
+      error = null;
+    }
+    // TODO NOW this is kinda a crapshot
+    let jsonError = { meta: error };
+    this._recordData.commitWasRejected([jsonError]);
   }
+  */
 
   toString() {
     return `<${this.modelName}:${this.id}>`;

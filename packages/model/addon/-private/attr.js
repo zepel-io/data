@@ -1,8 +1,13 @@
 import { computed } from '@ember/object';
 import { assert } from '@ember/debug';
 import { DEBUG } from '@glimmer/env';
+<<<<<<< HEAD:packages/model/addon/-private/attr.js
 import { recordDataFor } from '@ember-data/store/-private';
 
+=======
+import recordDataFor from './system/record-data-for';
+import errors from './system/model/errors';
+>>>>>>> ts start:addon/-private/attr.ts
 /**
   @module ember-data
 */
@@ -146,6 +151,15 @@ export default function attr(type, options) {
             `'${key}' is a reserved property name on instances of classes extending Model. Please choose a different property name for your attr on ${this.constructor.toString()}`
           );
         }
+      }
+      // TODO remove IM reference
+      let oldValue = this._internalModel._recordData.getAttr(key);
+      if (oldValue !== value) {
+        let errors = this.get('errors');
+        if (errors.get(key)) {
+          errors.remove(key);
+        }
+        this._markInvalidRequestAsClean();
       }
       return this._internalModel.setDirtyAttribute(key, value);
     },
