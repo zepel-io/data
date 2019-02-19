@@ -126,7 +126,7 @@ install:
   - yarn install
 
 script:
-  - node_modules/.bin/ember try:one $EMBER_TRY_SCENARIO --skip-cleanup
+  - yarn test:try-one $EMBER_TRY_SCENARIO --skip-cleanup
 
 env:
   global:
