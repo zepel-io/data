@@ -625,6 +625,7 @@ const Model = EmberObject.extend(Evented, {
       // the nested runloop here is necessary to ensure that the record is fully
       //   destroyed prior to the promise resolving.
       //   run.join is inadequate as the destroy queue would still be flushed after the resolve
+      debugger;
       run(() => this.unloadRecord());
     });
   },

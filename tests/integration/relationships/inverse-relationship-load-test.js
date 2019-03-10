@@ -471,6 +471,7 @@ module('inverse relationship load test', function(hooks) {
 
   test('one-to-one - findBelongsTo/implicit inverse - ensures inverse relationship is set up when payload does not return parent relationship info', async function(assert) {
     let { owner } = this;
+    let linkCalls = 0;
 
     owner.register(
       'adapter:application',
@@ -481,6 +482,7 @@ module('inverse relationship load test', function(hooks) {
           });
         },
         findBelongsTo() {
+          assert.equal(linkCalls++, 0, 'we only call findBelongsTo once');
           return resolve({
             data: {
               id: 1,
@@ -528,17 +530,23 @@ module('inverse relationship load test', function(hooks) {
     });
 
     let favoriteDog = await person.get('favoriteDog');
+    
     assert.equal(person.belongsTo('favoriteDog').belongsToRelationship.relationshipIsEmpty, false);
     assert.equal(favoriteDog.get('id'), '1', 'favoriteDog id is set correctly');
+    
     let favoriteDogPerson = await favoriteDog.get('person');
     assert.equal(
       favoriteDogPerson.get('id'),
       '1',
       'favoriteDog.person inverse relationship is set up correctly when adapter does not include parent relationships in data.relationships'
     );
+    
     await favoriteDog.destroyRecord();
+
+    debugger;
+
     favoriteDog = await person.get('favoriteDog');
-    assert.equal(favoriteDog, null);
+    assert.ok(favoriteDog === null, 'favoriteDog was fully removed from the relationship');
   });
 
   test('one-to-one (left hand async, right hand sync) - findBelongsTo/implicit inverse - ensures inverse relationship is set up when payload does not return parent relationship info', async function(assert) {
