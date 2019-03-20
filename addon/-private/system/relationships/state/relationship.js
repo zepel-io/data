@@ -1,4 +1,3 @@
-/* global heimdall */
 import { guidFor } from '@ember/object/internals';
 import { get } from '@ember/object';
 import { relationshipStateFor } from '../../record-data-for';
@@ -6,54 +5,8 @@ import { assert, warn } from '@ember/debug';
 import OrderedSet from '../../ordered-set';
 import _normalizeLink from '../../normalize-link';
 
-const {
-  addCanonicalRecordData,
-  addCanonicalRecordDatas,
-  addRecordData,
-  addRecordDatas,
-  clear,
-  flushCanonical,
-  flushCanonicalLater,
-  newRelationship,
-  push,
-  removeCanonicalRecordData,
-  removeCanonicalRecordDataFromInverse,
-  removeCanonicalRecordDataFromOwn,
-  removeCanonicalRecordDatas,
-  removeRecordData,
-  removeRecordDataFromInverse,
-  removeRecordDataFromOwn,
-  removeRecordDatas,
-  updateLink,
-  updateMeta,
-  updateRecordDatasFromAdapter,
-} = heimdall.registerMonitor(
-  'system.relationships.state.relationship',
-  'addCanonicalRecordData',
-  'addCanonicalRecordDatas',
-  'addRecordData',
-  'addRecordDatas',
-  'clear',
-  'flushCanonical',
-  'flushCanonicalLater',
-  'newRelationship',
-  'push',
-  'removeCanonicalRecordData',
-  'removeCanonicalRecordDataFromInverse',
-  'removeCanonicalRecordDataFromOwn',
-  'removeCanonicalRecordDatas',
-  'removeRecordData',
-  'removeRecordDataFromInverse',
-  'removeRecordDataFromOwn',
-  'removeRecordDatas',
-  'updateLink',
-  'updateMeta',
-  'updateRecordDatasFromAdapter'
-);
-
 export default class Relationship {
   constructor(store, inverseKey, relationshipMeta, recordData, inverseIsAsync) {
-    heimdall.increment(newRelationship);
     this.inverseIsAsync = inverseIsAsync;
     this.kind = relationshipMeta.kind;
     let async = relationshipMeta.options.async;
@@ -283,12 +236,10 @@ export default class Relationship {
   }
 
   updateMeta(meta) {
-    heimdall.increment(updateMeta);
     this.meta = meta;
   }
 
   clear() {
-    heimdall.increment(clear);
 
     let members = this.members.list;
     while (members.length > 0) {
@@ -314,12 +265,10 @@ export default class Relationship {
   }
 
   removeRecordDatas(recordDatas) {
-    heimdall.increment(removeRecordDatas);
     recordDatas.forEach(recordData => this.removeRecordData(recordData));
   }
 
   addRecordDatas(recordDatas, idx) {
-    heimdall.increment(addRecordDatas);
     recordDatas.forEach(recordData => {
       this.addRecordData(recordData, idx);
       if (idx !== undefined) {
@@ -329,7 +278,6 @@ export default class Relationship {
   }
 
   addCanonicalRecordDatas(recordDatas, idx) {
-    heimdall.increment(addCanonicalRecordDatas);
     for (let i = 0; i < recordDatas.length; i++) {
       if (idx !== undefined) {
         this.addCanonicalRecordData(recordDatas[i], i + idx);
@@ -340,7 +288,6 @@ export default class Relationship {
   }
 
   addCanonicalRecordData(recordData, idx) {
-    heimdall.increment(addCanonicalRecordData);
     if (!this.canonicalMembers.has(recordData)) {
       this.canonicalMembers.add(recordData);
       this.setupInverseRelationship(recordData);
@@ -380,7 +327,6 @@ export default class Relationship {
   }
 
   removeCanonicalRecordDatas(recordDatas, idx) {
-    heimdall.increment(removeCanonicalRecordDatas);
     for (let i = 0; i < recordDatas.length; i++) {
       if (idx !== undefined) {
         this.removeCanonicalRecordData(recordDatas[i], i + idx);
@@ -391,7 +337,6 @@ export default class Relationship {
   }
 
   removeCanonicalRecordData(recordData, idx) {
-    heimdall.increment(removeCanonicalRecordData);
     if (this.canonicalMembers.has(recordData)) {
       this.removeCanonicalRecordDataFromOwn(recordData);
       if (this.inverseKey) {
@@ -411,7 +356,6 @@ export default class Relationship {
   }
 
   addRecordData(recordData, idx) {
-    heimdall.increment(addRecordData);
     if (!this.members.has(recordData)) {
       this.members.addWithIndex(recordData, idx);
       this.notifyRecordRelationshipAdded(recordData, idx);
@@ -438,7 +382,6 @@ export default class Relationship {
   }
 
   removeRecordData(recordData) {
-    heimdall.increment(removeRecordData);
     if (this.members.has(recordData)) {
       this.removeRecordDataFromOwn(recordData);
       if (this.inverseKey) {
@@ -457,7 +400,6 @@ export default class Relationship {
   }
 
   removeRecordDataFromInverse(recordData) {
-    heimdall.increment(removeRecordDataFromInverse);
     if (!this._hasSupportForRelationships(recordData)) {
       return;
     }
@@ -469,12 +411,10 @@ export default class Relationship {
   }
 
   removeRecordDataFromOwn(recordData) {
-    heimdall.increment(removeRecordDataFromOwn);
     this.members.delete(recordData);
   }
 
   removeCanonicalRecordDataFromInverse(recordData) {
-    heimdall.increment(removeCanonicalRecordDataFromInverse);
     if (!this._hasSupportForRelationships(recordData)) {
       return;
     }
@@ -486,7 +426,6 @@ export default class Relationship {
   }
 
   removeCanonicalRecordDataFromOwn(recordData) {
-    heimdall.increment(removeCanonicalRecordDataFromOwn);
     this.canonicalMembers.delete(recordData);
     this.flushCanonicalLater();
   }
@@ -539,7 +478,6 @@ export default class Relationship {
   }
 
   flushCanonical() {
-    heimdall.increment(flushCanonical);
     let list = this.members.list;
     this.willSync = false;
     //a hack for not removing new RecordDatas
@@ -560,7 +498,6 @@ export default class Relationship {
   }
 
   flushCanonicalLater() {
-    heimdall.increment(flushCanonicalLater);
     if (this.willSync) {
       return;
     }
@@ -570,7 +507,6 @@ export default class Relationship {
   }
 
   updateLink(link) {
-    heimdall.increment(updateLink);
     warn(
       `You pushed a record of type '${this.recordData.modelName}' with a relationship '${
         this.key
@@ -591,7 +527,6 @@ export default class Relationship {
   }
 
   updateRecordDatasFromAdapter(recordDatas) {
-    heimdall.increment(updateRecordDatasFromAdapter);
     this.setHasAnyRelationshipData(true);
     //TODO(Igor) move this to a proper place
     //TODO Once we have adapter support, we need to handle updated and canonical changes
@@ -625,7 +560,6 @@ export default class Relationship {
    of the relationship.
    */
   push(payload, initial) {
-    heimdall.increment(push);
 
     let hasRelationshipDataProperty = false;
     let hasLink = false;
