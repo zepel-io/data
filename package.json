@@ -7,7 +7,8 @@
   "scripts": {
     "build": "yarn workspace ember-data build",
     "build:production": "yarn workspace ember-data build:production",
-    "lint:js": "yarn workspace ember-data lint:js",
+    "lint:js": "lerna run lint:js",
+    "lint:features": "yarn workspace ember-data lint:features",
     "start": "yarn workspace ember-data start",
     "test": "yarn workspace ember-data test",
     "test:all": "yarn workspace ember-data test:all",
