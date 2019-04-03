@@ -1,5 +1,5 @@
-import BelongsToRelationship from 'ember-data/-private/system/relationships/state/belongs-to';
-import ManyRelationship from 'ember-data/-private/system/relationships/state/has-many';
+import BelongsToRelationship from '../system/relationships/state/belongs-to';
+import ManyRelationship from '../system/relationships/state/has-many';
 export interface AttributesHash {
   attributes?: {
     [key: string]: any;

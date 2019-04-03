@@ -4,44 +4,24 @@
     "allowJs": true,
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
-    "noImplicitAny": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-    "strictNullChecks": true,
-    "strictPropertyInitialization": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
+    "noImplicitAny": false,
     "noEmitOnError": false,
+    "strictNullChecks": true,
+    "experimentalDecorators": true,
     "noEmit": true,
+    "skipLibCheck": true,
     "inlineSourceMap": true,
     "inlineSources": true,
     "baseUrl": ".",
-    "module": "es6",
+    "module": "esnext",
     "paths": {
-      "dummy/tests/*": [
-        "tests/*"
-      ],
-      "dummy/*": [
-        "tests/dummy/app/*",
-        "app/*"
-      ],
-      "@ember-data/store": [
-        "addon"
-      ],
-      "@ember-data/store/*": [
-        "addon/*"
-      ],
-      "@ember-data/store/test-support": [
-        "addon-test-support"
-      ],
-      "@ember-data/store/test-support/*": [
-        "addon-test-support/*"
-      ],
-      "*": [
-        "types/*"
-      ]
+      "dummy/tests/*": ["tests/*"],
+      "dummy/*": ["tests/dummy/app/*", "app/*"],
+      "ember-data": ["addon"],
+      "ember-data/*": ["addon/*"],
+      "ember-data/test-support": ["addon-test-support"],
+      "ember-data/test-support/*": ["addon-test-support/*"],
+      "*": ["types/*"]
     }
   },
   "include": [
@@ -51,5 +31,6 @@
     "types/**/*",
     "test-support/**/*",
     "addon-test-support/**/*"
-  ]
+  ],
+  "exclude": ["node_modules"]
 }
