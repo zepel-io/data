@@ -5,6 +5,7 @@ import Store from 'ember-data/store';
 import { attr, belongsTo } from '@ember-decorators/data';
 import { module, test } from 'qunit';
 import { settled } from '@ember/test-helpers';
+import  RecordData from '../../../addon/-private/ts-interfaces/record-data';
 
 class Book extends Model {
   // TODO fix the typing for naked attrs
@@ -28,7 +29,7 @@ class House extends Model {
   @belongsTo('person', {}) person;
 }
 
-class TestRecordData {
+class TestRecordData implements RecordData {
   pushData(data, calculateChange?: boolean) {
 
   }
@@ -64,6 +65,7 @@ class TestRecordData {
   }
 
   getHasMany(key: string) {
+    return {};
 
   }
 
