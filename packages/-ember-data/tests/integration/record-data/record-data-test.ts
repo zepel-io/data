@@ -161,8 +161,9 @@ module('integration/record-data - Custom RecordData Implementations', function (
   });
 
   test("Record Data push and save lifecycle", async function (assert) {
-    assert.expect(5);
+    assert.expect(13);
     let called = 0;
+    let createCalled = 0;
     const personHash = {
       type: 'person',
       id: '1',
@@ -171,29 +172,42 @@ module('integration/record-data - Custom RecordData Implementations', function (
       }
     }
     let { owner } = this;
+    let calledPush = 0
+    let calledClientDidCreate = 0;
+    let calledWillCommit = 0;
+    let calledWasRejected = 0;
+    let calledUnloadRecord = 0;
+    let calledRollbackAttributes = 0;
+    let calledDidCommit = 0;
+
     class LifecycleRecordData extends TestRecordData {
       pushData(data, calculateChange?: boolean) {
-        assert.deepEqual(data, personHash, 'called push succesfully')
+        calledPush++;
+        debugger
+      }
+
+      clientDidCreate() {
+        calledClientDidCreate++;
       }
 
       willCommit() {
-        assert.ok(true, 'willCommit called');
+        calledWillCommit++;
       }
 
       commitWasRejected() {
-        assert.ok(true, 'commit rejected called');
+        calledWasRejected++;
       }
 
       unloadRecord() {
-        assert.ok(true, 'unload called');
+        calledUnloadRecord++;
       }
 
       rollbackAttributes() {
-        assert.ok(true, 'rollback Attributes called');
+        calledRollbackAttributes++;
       }
 
       didCommit(data) {
-        assert.ok(true, 'didCommit called');
+        calledDidCommit++;
       }
     }
 
@@ -204,34 +218,28 @@ module('integration/record-data - Custom RecordData Implementations', function (
       }
     });
 
-    let TestAdapter =  Ember.Object.extend({
+    let TestAdapter = Ember.Object.extend({
       updateRecord() {
         called++;
         if (called === 1) {
           return Promise.resolve();
-        } else if (called === 2) {
+        } else if (called > 1) {
           return Promise.reject();
         }
-      }
-    }); 
+      },
 
-    /*
-    env = setupStore({
-      adapter: DS.Adapter.extend({
-        updateRecord() {
-          return Promise.resolve();
-        }
-      }),
-      store: CustomS
+      createRecord() {
+        return Promise.resolve();
+      }
     });
-    */
+
     owner.register('service:store', TestStore);
-    owner.register('adapter:application', TestAdapter, {singleton: false});
+    owner.register('adapter:application', TestAdapter, { singleton: false });
 
     store = owner.lookup('service:store');
 
     store.push({
-      data: [ personHash ]
+      data: [personHash]
     });
 
     let person = store.peekRecord('person', '1');
@@ -240,7 +248,39 @@ module('integration/record-data - Custom RecordData Implementations', function (
     person.save();
     await settled();
     person.rollbackAttributes();
-    //person.unloadRecord();
+    person.unloadRecord();
     await settled();
+    assert.equal(calledPush, 1, 'Called pushData');
+    assert.equal(calledWillCommit, 2, 'Called willCommit');
+    assert.equal(calledWasRejected, 1, 'Called commitWasRejected');
+    assert.equal(calledUnloadRecord, 1, 'Called unloadRecord');
+    assert.equal(calledRollbackAttributes, 1, 'Called rollbackAttributes');
+    assert.equal(calledDidCommit, 1, 'Called didCommit');
+    assert.equal(calledClientDidCreate, 0, 'Did not called clientDidCreate');
+
+    calledPush = 0;
+    calledClientDidCreate = 0;
+    calledWillCommit = 0;
+    calledWasRejected = 0;
+    calledUnloadRecord = 0;
+    calledRollbackAttributes = 0;
+    calledDidCommit = 0;
+
+    let clientPerson = store.createRecord('person', { id: 2 });
+    clientPerson.save();
+    await settled();
+    clientPerson.save();
+    await settled();
+    clientPerson.unloadRecord();
+    await settled();
+    assert.equal(calledPush, 0, 'Called pushData');
+    assert.equal(calledWillCommit, 2, 'Called willCommit');
+    assert.equal(calledWasRejected, 1, 'Called commitWasRejected');
+    assert.equal(calledUnloadRecord, 1, 'Called unloadRecord');
+    assert.equal(calledDidCommit, 1, 'Called didCommit');
+    assert.equal(calledClientDidCreate, 1, 'Did not called clientDidCreate');
+
+
+
   });
 });
