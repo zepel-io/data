@@ -19,6 +19,9 @@ import { default as recordDataFor, relationshipStateFor } from '../record-data-f
 import RecordDataDefault from './record-data';
 import RecordData from '../../ts-interfaces/record-data';
 import { JsonApiResource } from '../../ts-interfaces/record-data-json-api';
+import { errorsHashToArray, errorsArrayToHash } from '../errors-utils';
+import { identifierFor } from '../record-identifier';
+// import RecordDataDefault, { RecordData, JsonApiResource, JsonApiValidationError, JsonApiError, ChangedAttributesHash } from './record-data';
 
 /*
   The TransitionChainMap caches the `state.enters`, `state.setups`, and final state reached
@@ -761,7 +764,7 @@ export default class InternalModel {
     @private
   */
   createSnapshot(options) {
-    return new Snapshot(this, options);
+    return new Snapshot(options, identifierFor(this), this.store);
   }
 
   /*
@@ -812,7 +815,7 @@ export default class InternalModel {
     @method changedAttributes
     @private
   */
-  changedAttributes() {
+  changedAttributes(): ChangedAttributesHash {
     if (this.isLoading() && !this.isReloading) {
       // no need to calculate changed attributes when calling `findRecord`
       return {};

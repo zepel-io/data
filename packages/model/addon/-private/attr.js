@@ -1,13 +1,8 @@
 import { computed } from '@ember/object';
 import { assert } from '@ember/debug';
 import { DEBUG } from '@glimmer/env';
-<<<<<<< HEAD:packages/model/addon/-private/attr.js
 import { recordDataFor } from '@ember-data/store/-private';
 
-=======
-import recordDataFor from './system/record-data-for';
-import errors from './system/model/errors';
->>>>>>> ts start:addon/-private/attr.ts
 /**
   @module ember-data
 */

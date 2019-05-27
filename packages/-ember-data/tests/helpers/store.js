@@ -51,6 +51,7 @@ export default function setupStore(options) {
     }
   };
 
+  debugger
   let adapter = (env.adapter = options.adapter || '-default');
   delete options.adapter;
 

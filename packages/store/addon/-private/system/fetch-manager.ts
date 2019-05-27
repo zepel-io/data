@@ -4,16 +4,14 @@ import { DEBUG } from '@glimmer/env';
 import { run as emberRunLoop } from '@ember/runloop';
 import Adapter from "@ember/test/adapter";
 import { AdapterCache } from "./adapter-cache";
-import { assert, deprecate, warn, inspect } from '@ember/debug';
+import { assert, warn, inspect } from '@ember/debug';
 import Snapshot from './snapshot';
 import { guardDestroyedStore, _guard, _bind, _objectIsAlive } from './store/common';
 import { normalizeResponseHelper } from './store/serializer-response';
 import { serializerForAdapter } from './store/serializers';
-import { InvalidError } from '../adapters/errors';
+import { InvalidError } from '@ember-data/adapter/error';
 
 import {
-  _find,
-  _findMany,
   _findHasMany,
   _findBelongsTo,
   _findAll,

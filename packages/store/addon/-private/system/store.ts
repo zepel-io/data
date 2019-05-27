@@ -34,7 +34,6 @@ import { identifierFor, RecordIdentifier } from './record-identifier';
 import { AdapterCache } from './adapter-cache';
 
 import {
-  _findMany,
   _findHasMany,
   _findBelongsTo,
   _findAll,
@@ -2588,7 +2587,7 @@ const Store = Service.extend({
   },
 
   _createRecordData(modelName, id, clientId, internalModel) {
-    return this.createRecordDataFor(modelName, id, clientId, this.recordDataWrapper);
+    return this.createRecordDataFor(modelName, id, clientId, this.storeWrapper);
   },
 
   createRecordDataFor(modelName, id, clientId, storeWrapper) {
@@ -2767,12 +2766,12 @@ const Store = Service.extend({
     @param {String} modelName
     @return DS.Adapter
   */
-  adapterFor(modelName:string): any {
+  adapterFor(modelName:string): unknown {
     if (DEBUG) {
       assertDestroyingStore(this, 'adapterFor');
     }
     // TODO Ask Runspired about perf impact
-    this._adapterCache.adapterFor(modelName);
+    return this._adapterCache.adapterFor(modelName);
   },
 
   // ..............................
