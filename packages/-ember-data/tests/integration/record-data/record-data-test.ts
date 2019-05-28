@@ -325,7 +325,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
   });
 
   test("Record Data attribute settting", async function (assert) {
-    assert.expect(11);
+    assert.expect(12);
     const personHash = {
       type: 'person',
       id: '1',
@@ -384,9 +384,10 @@ module('integration/record-data - Custom RecordData Implementations', function (
     let person = store.peekRecord('person', '1');
     assert.equal(person.get('name'), 'new attribute');
     person.set('name', 'new value');
+    let getCalls = calledGet;
     person.notifyPropertyChange('name');
     assert.equal(person.get('name'), 'new attribute');
-    assert.equal(calledGet, 3, 'called getAttr after notifyPropertyChange');
+    assert.equal(calledGet, getCalls + 1, 'called getAttr after notifyPropertyChange');
     assert.deepEqual(person.changedAttributes(), { name: ['old', 'new'] }, 'changed attributes passes through RD value');
   });
 
