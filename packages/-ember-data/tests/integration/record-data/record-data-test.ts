@@ -61,6 +61,14 @@ class TestRecordData {
     return {};
   }
 
+  isNew() {
+    return false;
+  }
+
+  isDeleted() {
+    return false;
+  }
+
   addToHasMany(key: string, recordDatas: this[], idx?: number) { }
   removeFromHasMany(key: string, recordDatas: this[]) { }
   setDirtyHasMany(key: string, recordDatas: this[]) { }
@@ -192,6 +200,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
     let calledUnloadRecord = 0;
     let calledRollbackAttributes = 0;
     let calledDidCommit = 0;
+    let isNew = false;
 
     class LifecycleRecordData extends TestRecordData {
       pushData(data, calculateChange?: boolean) {
@@ -199,7 +208,12 @@ module('integration/record-data - Custom RecordData Implementations', function (
       }
 
       clientDidCreate() {
+        isNew = true;
         calledClientDidCreate++;
+      }
+
+      isNew() {
+        return isNew;
       }
 
       willCommit() {
@@ -219,6 +233,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
       }
 
       didCommit(data) {
+        isNew = false;
         calledDidCommit++;
       }
     }

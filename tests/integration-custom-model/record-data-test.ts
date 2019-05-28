@@ -67,6 +67,10 @@ class TestRecordData {
 
   }
 
+  isNew() {
+    return false;
+  }
+
   addToHasMany(key: string, recordDatas: this[], idx?: number) {
 
   }
@@ -182,7 +186,6 @@ module('integration-custom-model/record-data - Custom RecordData Implementations
   });
 
   test("A noop Record Data implementation that follows the interop spec should not error out", async function (assert) {
-    debugger
     store.push({
       data: [
         {
