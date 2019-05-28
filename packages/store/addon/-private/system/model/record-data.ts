@@ -47,17 +47,12 @@ export interface JsonApiHasManyRelationship {
   _relationship?: ManyRelationship
 }
 
-export interface JsonApiError {
-  id?: string;
-  status?: string;
-  code?: string;
+export interface RecordValidationError {
   title?: string;
   detail?: string;
   source?: {
     pointer?: string;
-    parameter?: string;
   };
-  meta?: Object
 }
 
 export interface JsonApiValidationError {
@@ -111,7 +106,7 @@ export interface RecordData {
   pushData(data: JsonApiResource, calculateChange?: boolean);
   clientDidCreate();
   willCommit();
-  commitWasRejected(errors?: JsonApiError[]);
+  commitWasRejected(errors?: RecordValidationError[]);
 
 
   unloadRecord();
@@ -144,7 +139,7 @@ export interface RecordData {
   _initRecordCreateOptions(options)
 
   // MEW
-  getErrors(): JsonApiError[]
+  getErrors(): RecordValidationError[]
 }
 
 export interface RelationshipRecordData extends RecordData {
@@ -162,7 +157,7 @@ export interface RelationshipRecordData extends RecordData {
 }
 
 export default class RecordDataDefault implements RecordData, RelationshipRecordData {
-  _errors?: JsonApiError[]
+  _errors?: RecordValidationError[]
   store: any;
   modelName: string;
   __relationships: Relationships | null;
@@ -268,8 +263,8 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
     }
   }
 
-  getErrors(): JsonApiError[] {
-    let errors: JsonApiError[] = this._errors;
+  getErrors(): RecordValidationError[] {
+    let errors: RecordValidationError[] = this._errors || [];
     return errors;
   }
 
@@ -463,7 +458,7 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
     this._relationships.get(key).removeRecordDatas(recordDatas);
   }
 
-  commitWasRejected(errors?: JsonApiError[]) {
+  commitWasRejected(errors?: RecordValidationError[]) {
     debugger
     let keys = Object.keys(this._inFlightAttributes);
     if (keys.length > 0) {
