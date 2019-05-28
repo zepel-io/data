@@ -10,6 +10,7 @@ import { guardDestroyedStore, _guard, _bind, _objectIsAlive } from './store/comm
 import { normalizeResponseHelper } from './store/serializer-response';
 import { serializerForAdapter } from './store/serializers';
 import { InvalidError } from '@ember-data/adapter/error';
+import coerceId from './coerce-id';
 
 import {
   _findHasMany,
@@ -331,7 +332,7 @@ export default class FetchManager {
           `You requested a record of type '${modelName}' with id '${id}' but the adapter returned a payload with primary data having an id of '${
           payload.data.id
           }'. Use 'store.findRecord()' when the requested id is the same as the one returned by the adapter. In other cases use 'store.queryRecord()' instead https://emberjs.com/api/data/classes/DS.Store.html#method_queryRecord`,
-          payload.data.id === id,
+          coerceId(payload.data.id) === coerceId(id),
           {
             id: 'ds.store.findRecord.id-mismatch',
           }
