@@ -1930,10 +1930,8 @@ const Store = Service.extend({
         }
       });
     },
-      (originalAndParsedError) => {
-        this.recordWasInvalid(internalModel, originalAndParsedError);
-        let error = Object.assign({}, originalAndParsedError);
-        delete error.parsedErrors;
+      ({error, parsedErrors}) => {
+        this.recordWasInvalid(internalModel, error, parsedErrors);
         throw error;
       });
 
@@ -1990,12 +1988,12 @@ const Store = Service.extend({
     @param {InternalModel} internalModel
     @param {Object} errors
   */
-  recordWasInvalid(internalModel, errors) {
+  recordWasInvalid(internalModel, error, parsedErrors) {
     debugger
     if (DEBUG) {
       assertDestroyingStore(this, 'recordWasInvalid');
     }
-    internalModel.adapterDidInvalidate(errors);
+    internalModel.adapterDidInvalidate(error, parsedErrors);
   },
 
   /**

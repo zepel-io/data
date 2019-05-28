@@ -380,6 +380,7 @@ module('unit/model/rollbackAttributes - model.rollbackAttributes()', function(ho
   });
 
   test("invalid record's attributes can be rollbacked", function(assert) {
+    debugger
     assert.expect(12);
     const Dog = DS.Model.extend({
       name: DS.attr(),
@@ -436,6 +437,7 @@ module('unit/model/rollbackAttributes - model.rollbackAttributes()', function(ho
       );
 
       return dog.save().catch(reason => {
+        debugger
         assert.equal(reason, error);
 
         run(() => {

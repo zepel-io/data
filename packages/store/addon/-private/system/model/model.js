@@ -272,7 +272,7 @@ const Model = EmberObject.extend(Evented, {
   
   _getInvalidRequest() {
     let requests = this.store.requestCache.getFinished(identifierForModel(this));
-    return requests.find((req) => req.state === 'rejected' && req.result instanceof InvalidError);
+    return requests.find((req) => req.state === 'rejected' && req.result.error instanceof InvalidError);
   },
 
   _markInvalidRequestAsClean() {
@@ -499,10 +499,11 @@ const Model = EmberObject.extend(Evented, {
     @type {DS.AdapterError}
   */
   adapterError: computed(function () {
+    debugger
     let requests = this.store.requestCache.getFinished(identifierForModel(this));
     let request = requests.find((req) => req.state === 'rejected');
     if (request) {
-      return request.result;
+      return request.result && request.result.error;
     } else {
       return null;
     }

@@ -184,10 +184,10 @@ export default class FetchManager {
           debugger
           let parsedErrors = serializer.extractErrors(store, modelClass, error, snapshot.id);
           // TODO put on a symbol
-          error.parsedErrors = parsedErrors;
-          throw error;
+          //error.parsedErrors = parsedErrors;
+          throw { error, parsedErrors };
         } else {
-          throw error;
+          throw { error }
         }
       },
       label

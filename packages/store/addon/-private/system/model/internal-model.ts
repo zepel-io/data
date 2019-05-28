@@ -1157,10 +1157,10 @@ export default class InternalModel {
     @method adapterDidInvalidate
     @private
   */
-  adapterDidInvalidate(errors) {
+  adapterDidInvalidate(error, parsedErrors) {
     let attribute;
-    if (errors && errors.parsedErrors) {
-      let jsonApiErrors: JsonApiValidationError[] = errorsHashToArray(errors.parsedErrors);
+    if (error && parsedErrors) {
+      let jsonApiErrors: JsonApiValidationError[] = errorsHashToArray(parsedErrors);
       this.send('becameInvalid');
       this._recordData.commitWasRejected(jsonApiErrors);
     } else {
