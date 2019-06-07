@@ -11,6 +11,7 @@ import EmberError from '@ember/error';
 import { set, get, computed } from '@ember/object';
 import { getOwner } from '@ember/application';
 import Model from './model/model';
+import ShimModelClass from './model/shim-model-class';
 // Implementors Note:
 //
 //   The variables in this file are consistently named according to the following
@@ -123,8 +124,8 @@ const Store = DefaultStore.extend({
   @method modelFor
   @param {String} modelName
   @return {DS.Model}
-*/
-modelFor(modelName) {
+    */
+  modelFor(modelName) {
   if (DEBUG) {
     assertDestroyedStoreOnly(this, 'modelFor');
   }
