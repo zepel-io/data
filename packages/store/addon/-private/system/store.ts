@@ -126,25 +126,25 @@ const Store = DefaultStore.extend({
   @return {DS.Model}
     */
   modelFor(modelName) {
-  if (DEBUG) {
-    assertDestroyedStoreOnly(this, 'modelFor');
-  }
-  assert(`You need to pass a model name to the store's modelFor method`, isPresent(modelName));
-  assert(
-    `Passing classes to store methods has been removed. Please pass a dasherized string instead of ${modelName}`,
-    typeof modelName === 'string'
-  );
+    if (DEBUG) {
+      assertDestroyedStoreOnly(this, 'modelFor');
+    }
+    assert(`You need to pass a model name to the store's modelFor method`, isPresent(modelName));
+    assert(
+      `Passing classes to store methods has been removed. Please pass a dasherized string instead of ${modelName}`,
+      typeof modelName === 'string'
+    );
 
-  let maybeFactory = this._modelFactoryFor(modelName);
+    let maybeFactory = this._modelFactoryFor(modelName);
 
-  // for factorFor factory/class split
-  let klass = maybeFactory.class ? maybeFactory.class : maybeFactory;
-  if (!klass.isModel) {
-    return new ShimModelClass(this, modelName);
-  } else {
-    return klass;
-  }
-},
+    // for factorFor factory/class split
+    let klass = maybeFactory.class ? maybeFactory.class : maybeFactory;
+    if (!klass.isModel) {
+      return new ShimModelClass(this, modelName);
+    } else {
+      return klass;
+    }
+  },
 
 
   _modelFactoryFor(modelName) {

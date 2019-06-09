@@ -6,7 +6,7 @@ export interface RecordDataStoreWrapper {
   disconnectRecord(modelName: string, id: string | null, clientId: string): void;
   isRecordInUse(modelName: string, id: string | null, clientId: string): boolean;
   notifyPropertyChange(modelName: string, id: string | null, clientId: string | null, key: string): void;
-  notifyErrorsChange(modelName: string, id: string | null, clientId: string | null, key: string): void;
+  notifyErrorsChange(modelName: string, id: string | null, clientId: string | null): void;
   // Needed For relationships
   notifyHasManyChange(modelName: string, id: string | null, clientId: string | null, key: string): void;
   recordDataFor(modelName: string, id: string, clientId?: string): unknown;
