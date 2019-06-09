@@ -46,7 +46,6 @@ export default interface RecordData {
   isDeleted(): boolean
 
   isDeletionCommitted(): boolean
-    
-  setIsDeleted(): void
-
+  
+  setIsDeleted(isDeleted: boolean): void
 }

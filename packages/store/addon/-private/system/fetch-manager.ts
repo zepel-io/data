@@ -181,7 +181,7 @@ export default class FetchManager {
       },
       function (error) {
         if (error instanceof InvalidError) {
-          debugger
+          //debugger
           let parsedErrors = serializer.extractErrors(store, modelClass, error, snapshot.id);
           // TODO put on a symbol
           //error.parsedErrors = parsedErrors;
@@ -216,7 +216,7 @@ export default class FetchManager {
     // TODO Probably the store should pass in the query object
 
 
-    debugger
+    //debugger
     let query: FindRecordExpression = {
       'op': 'findRecord',
       record: identifier,
@@ -397,7 +397,7 @@ export default class FetchManager {
   }
 
   rejectInternalModels(seeking: { [id: string]: PendingFetchItem }, identifiers: RecordIdentifier[], error?) {
-    debugger
+    //debugger
     for (let i = 0, l = identifiers.length; i < l; i++) {
       let identifier = identifiers[i];
       let pair = seeking[identifier.id];

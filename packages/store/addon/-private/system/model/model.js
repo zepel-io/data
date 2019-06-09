@@ -499,7 +499,7 @@ const Model = EmberObject.extend(Evented, {
     @type {DS.AdapterError}
   */
   adapterError: computed(function () {
-    debugger
+    //debugger
     let requests = this.store.requestCache.getFinished(identifierForModel(this));
     let request = requests.find((req) => req.state === 'rejected');
     if (request) {

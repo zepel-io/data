@@ -1136,8 +1136,6 @@ export default class InternalModel {
     @method adapterDidCommit
   */
   adapterDidCommit(data) {
-    debugger
-
     let changedKeys = this._recordData.didCommit(data);
 
     this.send('didCommit');

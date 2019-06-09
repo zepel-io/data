@@ -685,6 +685,7 @@ const RootState = {
       isDirty: false,
 
       setup(internalModel) {
+        debugger
         internalModel.removeFromInverseRelationships();
       },
 

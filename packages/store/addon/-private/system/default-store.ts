@@ -788,7 +788,7 @@ const DefaultStore = Service.extend({
   },
 
   _findEmptyInternalModel(internalModel, options) {
-    debugger
+    //debugger
     if (internalModel.isEmpty()) {
       return this._scheduleFetch(internalModel, options);
     }
@@ -1987,7 +1987,7 @@ const DefaultStore = Service.extend({
     @param {Object} errors
   */
   recordWasInvalid(internalModel, error, parsedErrors) {
-    debugger
+    //debugger
     if (DEBUG) {
       assertDestroyingStore(this, 'recordWasInvalid');
     }
