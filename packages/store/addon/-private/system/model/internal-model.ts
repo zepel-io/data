@@ -358,7 +358,9 @@ export default class InternalModel {
   }
 
   deleteRecord() {
-    this._recordData.deleteRecord();
+    if (this._recordData.setIsDeleted) {
+        this._recordData.setIsDeleted(true);
+    }
     this.send('deleteRecord');
   }
 
@@ -1134,6 +1136,7 @@ export default class InternalModel {
     @method adapterDidCommit
   */
   adapterDidCommit(data) {
+    debugger
 
     let changedKeys = this._recordData.didCommit(data);
 

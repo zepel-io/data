@@ -38,4 +38,15 @@ export default interface RecordData {
 
   isRecordInUse(): boolean;
   _initRecordCreateOptions(options: any): object;
+
+  //new
+
+  isNew(): boolean
+
+  isDeleted(): boolean
+
+  isDeletionCommitted(): boolean
+    
+  setIsDeleted(): void
+
 }

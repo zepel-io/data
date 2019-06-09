@@ -122,7 +122,6 @@ export interface RecordData {
   isAttrDirty(key: string)
   removeFromInverseRelationships(isNew: boolean)
   hasAttr(key: string): boolean;
-  deleteRecord();
 
   _initRecordCreateOptions(options)
 
@@ -200,6 +199,15 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
 
   isDeleted() {
     return this._isDeleted;
+  }
+
+  setIsDeleted(isDeleted: boolean): void {
+    this._isDeleted = isDeleted;
+  }
+
+  isDeletionCommitted(): boolean {
+    return this._isE
+
   }
 
   pushData(data: JsonApiResource, calculateChange: boolean) {

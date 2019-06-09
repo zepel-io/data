@@ -181,7 +181,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
     assert.equal(get(all, 'length'), 3);
   });
 
-  test("Record Data push, create and save lifecycle", async function (assert) {
+  test("Record Data push, create and save lifecycle igor  ", async function (assert) {
     assert.expect(17);
     let called = 0;
     let createCalled = 0;
@@ -201,6 +201,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
     let calledRollbackAttributes = 0;
     let calledDidCommit = 0;
     let isNew = false;
+    let isDeleted = false;
 
     class LifecycleRecordData extends TestRecordData {
       pushData(data, calculateChange?: boolean) {
@@ -216,6 +217,10 @@ module('integration/record-data - Custom RecordData Implementations', function (
         return isNew;
       }
 
+      isDeleted() {
+        return isDeleted;
+      }
+
       willCommit() {
         calledWillCommit++;
       }
@@ -228,11 +233,17 @@ module('integration/record-data - Custom RecordData Implementations', function (
         calledUnloadRecord++;
       }
 
+      setIsDeleted(value) {
+        debugger
+        isDeleted = value;
+      }
+
       rollbackAttributes() {
         calledRollbackAttributes++;
       }
 
       didCommit(data) {
+        debugger
         isNew = false;
         calledDidCommit++;
       }
@@ -255,6 +266,11 @@ module('integration/record-data - Custom RecordData Implementations', function (
         }
       },
 
+      deleteRecord() {
+        debugger
+        return Promise.resolve();
+      },
+
       createRecord() {
         return Promise.resolve();
       }
@@ -271,6 +287,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
     assert.equal(calledPush, 1, 'Called pushData');
 
     let person = store.peekRecord('person', '1');
+    /*
     person.save();
     assert.equal(calledWillCommit, 1, 'Called willCommit');
 
@@ -286,6 +303,16 @@ module('integration/record-data - Custom RecordData Implementations', function (
 
     person.rollbackAttributes();
     assert.equal(calledRollbackAttributes, 1, 'Called rollbackAttributes');
+    */
+
+    person.deleteRecord();
+    person.save();
+    assert.equal(calledWillCommit,3, 'Called willCommit');
+    await settled();
+
+    assert.equal(calledDidCommit, 2, 'Called didCommit after deleted');
+    await settled();
+
 
     person.unloadRecord();
     assert.equal(calledUnloadRecord, 1, 'Called unloadRecord');
@@ -308,6 +335,8 @@ module('integration/record-data - Custom RecordData Implementations', function (
     assert.equal(calledWillCommit, 1, 'Called willCommit');
 
     await settled();
+    assert.equal(calledPush, 0, 'Did not call pushData');
+    /*
     assert.equal(calledDidCommit, 1, 'Called didCommit');
 
     clientPerson.save();
@@ -316,12 +345,11 @@ module('integration/record-data - Custom RecordData Implementations', function (
     await settled();
     assert.equal(calledWasRejected, 1, 'Called commitWasRejected');
     assert.equal(calledDidCommit, 1, 'Did not call didCommit again');
+    */
 
-    clientPerson.unloadRecord();
-    assert.equal(calledUnloadRecord, 1, 'Called unloadRecord');
+    //clientPerson.unloadRecord();
+    //assert.equal(calledUnloadRecord, 1, 'Called unloadRecord');
 
-    await settled();
-    assert.equal(calledPush, 0, 'Did not call pushData');
   });
 
   test("Record Data attribute settting", async function (assert) {
