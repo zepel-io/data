@@ -236,7 +236,9 @@ export default class InternalModel {
   }
 
   isDeleted() {
-    return this.currentState.isDeleted;
+    //TODO deprecate and use RD directly
+    return this._recordData.isDeleted();
+    //return this.currentState.isDeleted;
   }
 
   isNew() {
