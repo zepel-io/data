@@ -203,6 +203,9 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
 
   setIsDeleted(isDeleted: boolean): void {
     this._isDeleted = isDeleted;
+    if (this._isNew) {
+      this._deletionConfirmed();
+    }
   }
 
   isDeletionCommitted(): boolean {
@@ -411,7 +414,15 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
     return dirtyKeys;
   }
 
+
+  _deletionConfirmed() {
+    this.removeFromInverseRelationships();
+  }
+
   didCommit(data: JsonApiResource | null) {
+    if (this._isDeleted) {
+      this._deletionConfirmed();
+    }
     this._isNew = false;
     let newCanonicalAttributes: AttributesHash | null = null;
     if (data) {

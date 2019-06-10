@@ -686,7 +686,7 @@ const RootState = {
 
       setup(internalModel) {
         debugger
-        internalModel.removeFromInverseRelationships();
+        //internalModel.removeFromInverseRelationships();
       },
 
       invokeLifecycleCallbacks(internalModel) {

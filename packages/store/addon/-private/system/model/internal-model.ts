@@ -425,6 +425,7 @@ export default class InternalModel {
     once all models that refer to it via some relationship are also unloaded.
   */
   unloadRecord() {
+    debugger
     if (this.isDestroyed) {
       return;
     }
