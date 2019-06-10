@@ -196,9 +196,18 @@ export default class InternalModel {
       this._isDematerializing ||
       this.hasScheduledDestroy() ||
       this.isDestroyed ||
-      this.currentState.stateName === 'root.deleted.saved' ||
+      this._isRecordFullyDeleted() ||
+      //this.currentState.stateName === 'root.deleted.saved' ||
       this.isEmpty()
     );
+  }
+
+  _isRecordFullyDeleted() {
+    if (this._recordData.isDeletionCommitted) {
+      return this._recordData.isDeletionCommitted() || (this._recordData.isNew() && this._recordData.isDeleted());
+    } else {
+      return this.currentState.stateName === 'root.deleted.saved';
+    }
   }
 
   isRecordInUse() {
@@ -425,7 +434,6 @@ export default class InternalModel {
     once all models that refer to it via some relationship are also unloaded.
   */
   unloadRecord() {
-    debugger
     if (this.isDestroyed) {
       return;
     }

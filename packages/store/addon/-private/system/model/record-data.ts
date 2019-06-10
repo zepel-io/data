@@ -160,6 +160,7 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
   isDestroyed: boolean;
   _isNew: boolean;
   _isDeleted: boolean;
+  _isDeletionCommited: boolean;
   _bfsId: number;
   __attributes: any;
   __inFlightAttributes: any;
@@ -177,6 +178,7 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
     this.isDestroyed = false;
     this._isNew = false;
     this._isDeleted = false;
+    this._isDeletionCommited = false;
     // Used during the mark phase of unloading to avoid checking the same internal
     // model twice in the same scan
     this._bfsId = 0;
@@ -209,8 +211,7 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
   }
 
   isDeletionCommitted(): boolean {
-    return this._isE
-
+    return this._isDeletionCommited;
   }
 
   pushData(data: JsonApiResource, calculateChange: boolean) {
@@ -422,6 +423,7 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
   didCommit(data: JsonApiResource | null) {
     if (this._isDeleted) {
       this._deletionConfirmed();
+      this._isDeletionCommited = true;
     }
     this._isNew = false;
     let newCanonicalAttributes: AttributesHash | null = null;
