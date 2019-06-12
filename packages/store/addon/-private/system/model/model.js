@@ -177,7 +177,7 @@ const Model = EmberObject.extend(Evented, {
   */
   isSaving: computed(function () {
     let requests = this.store.requestCache.getPending(identifierForModel(this));
-    return !!requests.find((req) => req.query.query.op === 'saveRecord');
+    return !!requests.find((req) => req.request.data.op === 'saveRecord');
   }).volatile(),
 
   /**
@@ -376,7 +376,7 @@ const Model = EmberObject.extend(Evented, {
 
   isReloading: computed(function () {
     let requests = this.store.requestCache.getPending(identifierForModel(this));
-    return !!requests.find((req) => req.query.query.options.isReloading);;
+    return !!requests.find((req) => req.request.data.options.isReloading);;
   }).volatile(),
 
   /**

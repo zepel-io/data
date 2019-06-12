@@ -18,7 +18,7 @@ import { RecordReference, BelongsToReference, HasManyReference } from '../refere
 import { default as recordDataFor, relationshipStateFor } from '../record-data-for';
 import RecordDataDefault from './record-data';
 import RecordData from '../../ts-interfaces/record-data';
-import { JsonApiResource } from '../../ts-interfaces/record-data-json-api';
+import { JsonApiResource, JsonApiValidationError } from '../../ts-interfaces/record-data-json-api';
 import { errorsHashToArray, errorsArrayToHash } from '../errors-utils';
 import { identifierFor } from '../record-identifier';
 // import RecordDataDefault, { RecordData, JsonApiResource, JsonApiValidationError, JsonApiError, ChangedAttributesHash } from './record-data';
@@ -227,6 +227,7 @@ export default class InternalModel {
     return this.currentState.isLoaded;
   }
 
+  /*
   hasDirtyAttributes() {
     return this.currentState.hasDirtyAttributes;
   }
@@ -234,6 +235,7 @@ export default class InternalModel {
   isSaving() {
     return this.currentState.isSaving;
   }
+  */
 
   isDeleted() {
     //TODO deprecate and use RD directly
@@ -242,15 +244,22 @@ export default class InternalModel {
   }
 
   isNew() {
-    return this.currentState.isNew;
+    //TODO deprecate and use RD directly
+    if (this._recordData.isNew) {
+      return this._recordData.isNew();
+    } else {
+      return this.currentState.isNew;
+    }
   }
 
+  /*
   isValid() {
-    return this.currentState.isValid;
+    //return this.currentState.isValid;
   }
+  */
 
   dirtyType() {
-    return this.currentState.dirtyType;
+    //return this.currentState.dirtyType;
   }
 
   getRecord(properties?) {
@@ -1174,9 +1183,9 @@ export default class InternalModel {
     if (error && parsedErrors) {
       let jsonApiErrors: JsonApiValidationError[] = errorsHashToArray(parsedErrors);
       this.send('becameInvalid');
-      this._recordData.commitWasRejected(jsonApiErrors);
+      this._recordData.commitWasRejected({}, jsonApiErrors);
     } else {
-      this._recordData.commitWasRejected();
+      this._recordData.commitWasRejected({});
     }
   }
 

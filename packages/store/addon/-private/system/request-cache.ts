@@ -4,16 +4,14 @@ import { DEBUG } from '@glimmer/env';
 import { run as emberRunLoop } from '@ember/runloop';
 import Adapter from "@ember/test/adapter";
 import { AdapterCache } from "./adapter-cache";
-import { assert, deprecate, warn, inspect } from '@ember/debug';
+import { assert, warn, inspect } from '@ember/debug';
 import Snapshot from './snapshot';
 import { guardDestroyedStore } from './store/common';
 import { normalizeResponseHelper } from './store/serializer-response';
 import { serializerForAdapter } from './store/serializers';
-import { QueryRequest, FindRecordExpression } from './fetch-manager';
+import { Request, FindRecordQuery, RequestState } from './fetch-manager';
 
 import {
-  _find,
-  _findMany,
   _findHasMany,
   _findBelongsTo,
   _findAll,
@@ -23,47 +21,46 @@ import {
 
 const touching = Symbol('touching');
 
-enum RequestState {
+enum RequestStateEnum {
   pending = 'pending',
   fulfilled = 'fulfilled',
   rejected = 'rejected'
 }
 
-export interface Request {
-  state: RequestState,
-  result?: any,
-  query: QueryRequest,
+export interface InternalRequest extends RequestState {
   _touching: RecordIdentifier[]
 }
 
 export default class RequestCache {
 
-  _pending: { [lid: string]: Request[] }
-  _done: { [lid: string]: Request[] }
+  _pending: { [lid: string]: InternalRequest[] }
+  _done: { [lid: string]: InternalRequest[] }
 
   constructor() {
     this._pending = Object.create(null);
     this._done = Object.create(null);
   }
 
-  enqueue(promise: Promise<any>, queryRequest: QueryRequest) {
-    if ('record' in queryRequest.query) {
-      let query: FindRecordExpression = queryRequest.query;
-      let lid = query.record.lid;
+  enqueue(promise: Promise<any>, queryRequest: Request) {
+    if ('identifier' in queryRequest.data) {
+      let query: FindRecordQuery = queryRequest.data;
+      let lid = query.identifier.lid;
       if (!this._pending[lid]) {
         this._pending[lid] = [];
       }
-      let request: Request = {
-        state: RequestState.pending,
-        query: queryRequest,
-        _touching: [query.record]
+      let request: InternalRequest = {
+        state: RequestStateEnum.pending,
+        request: queryRequest,
+        type:  <const> 'query',
+        _touching: [query.identifier]
       }
       this._pending[lid].push(request);
       promise.then((result) => {
         this._dequeue(lid, request);
         let finalizedRequest = {
-          state: RequestState.fulfilled,
-          query: queryRequest,
+          state: RequestStateEnum.fulfilled,
+          request: queryRequest,
+          type:  <const> 'query',
           _touching: request._touching,
           result
         }
@@ -71,8 +68,9 @@ export default class RequestCache {
       }, (error) => {
         this._dequeue(lid, request);
         let finalizedRequest = {
-          state: RequestState.rejected,
-          query: queryRequest,
+          state: RequestStateEnum.rejected,
+          request: queryRequest,
+          type:  <const> 'query',
           _touching: request._touching,
           result: error
         }
@@ -81,21 +79,33 @@ export default class RequestCache {
     }
   }
 
-  _dequeue(lid: string, request: Request) {
+  _dequeue(lid: string, request: InternalRequest) {
     this._pending[lid] = this._pending[lid].filter((req) => req !== request);
   }
 
-  _addDone(request: Request) {
+  _addDone(request: InternalRequest) {
     request._touching.forEach(identifier => {
       if (!this._done[identifier.lid]) {
         this._done[identifier.lid] = [];
       }
-      this._done[identifier.lid] = this._done[identifier.lid].filter((req) => req.query.op !== request.query.op);
+      // TODO add support for multiple
+      let requestDataOp = request.request.data instanceof Array ? request.request.data[0].op : request.request.data.op;
+      this._done[identifier.lid] = this._done[identifier.lid].filter((req) => {
+
+        // TODO add support for multiple
+        let data;
+        if (req.request.data instanceof Array) {
+          data = req.request.data[0];
+        } else{
+          data = req.request.data;
+        }
+        return data.op !== requestDataOp;
+      });
       this._done[identifier.lid].push(request);
     });
   }
 
-  getPending(identifier: RecordIdentifier): Request[] {
+  getPending(identifier: RecordIdentifier): RequestState[] {
     if (this._pending[identifier.lid]) {
       return this._pending[identifier.lid];
     }
@@ -103,7 +113,7 @@ export default class RequestCache {
   }
 
   // TODO Name!!
-  getFinished(identifier: RecordIdentifier): Request[] {
+  getFinished(identifier: RecordIdentifier): RequestState[] {
     if (this._done[identifier.lid]) {
       return this._done[identifier.lid];
     }

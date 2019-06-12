@@ -45,9 +45,10 @@ export interface PendingSaveItem {
   snapshot: Snapshot,
   identifier: RecordIdentifier,
   options: any,
-  queryRequest: QueryRequest
+  queryRequest: Request
 }
 
+/*
 export interface QueryExpression {
   op: string;
   options: { [key: string]: any };
@@ -66,6 +67,52 @@ export interface SaveRecordExpression extends QueryExpression {
 // TODO Name?
 export interface QueryRequest {
   query: QueryExpression
+}
+*/
+
+export interface Operation {
+  op: string
+}
+
+export interface QueryOperation extends Operation {};
+
+export interface FindRecordQuery extends QueryOperation {
+  op: 'findRecord'
+  identifier: RecordIdentifier
+  options: any
+}
+
+export interface MutationOperation extends Operation {};
+
+export interface SaveRecordMutation extends MutationOperation {
+  op: 'saveRecord'
+  identifier: RecordIdentifier
+  options: any
+}
+
+export interface Request {
+  data: Operation[] | Operation;
+  options?: any
+}
+
+export interface QueryRequest extends Request {
+  data: QueryOperation;
+}
+
+export interface MutationRequest extends Request {
+  data: MutationOperation[];
+}
+
+export interface RequestState {
+  state: 'pending' | 'fulfilled' | 'rejected';
+  type: 'query' | 'mutation';
+  request: Request;
+  response?: Response;
+}
+
+export interface Response {
+  rawData: unknown;
+  data: unknown;
 }
 
 export default class FetchManager {
@@ -101,14 +148,14 @@ export default class FetchManager {
   scheduleSave(identifier: RecordIdentifier, options: any) {
     let promiseLabel = 'DS: Model#save ' + this;
     let resolver = RSVP.defer(promiseLabel);
-    let query: SaveRecordExpression = {
+    let query: SaveRecordMutation = {
       'op': 'saveRecord',
-      record: identifier,
+      identifier,
       options
     }
 
-    let queryRequest: QueryRequest = {
-      query
+    let queryRequest: Request = {
+      data: query
     }
 
     let snapshot = new Snapshot(options, identifier, this._store);
@@ -217,14 +264,14 @@ export default class FetchManager {
 
 
     //debugger
-    let query: FindRecordExpression = {
+    let query: FindRecordQuery = {
       'op': 'findRecord',
-      record: identifier,
+      identifier,
       options
     }
 
     let queryRequest: QueryRequest = {
-      query
+      data: query
     }
 
     // We already have a pending fetch for this
