@@ -110,6 +110,7 @@ const Store = CoreStore.extend({
   },
 
   instantiateRecord(modelName, createOptions) {
+    delete createOptions.container;
     return this._modelFactoryFor(modelName).create(createOptions);
   },
 
