@@ -333,7 +333,7 @@ const Model = EmberObject.extend(Evented, {
 
   _getErrorRequest() {
     let requests = this.store.requestCache.getFinished(identifierForModel(this));
-    return requests.find((req) => req.state === 'rejected' && !(req.result.error instanceof InvalidError));
+    return requests.find((req) => req.state === 'rejected' && !(req.result && req.result.error instanceof InvalidError));
   },
 
   /**
