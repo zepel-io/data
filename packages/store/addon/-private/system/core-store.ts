@@ -3,11 +3,11 @@
 */
 import { registerWaiter, unregisterWaiter } from '@ember/test';
 
-import { A } from '@ember/array';
+import { default as EmberArray, A  } from '@ember/array';
 import EmberError from '@ember/error';
+import { setOwner, getOwner } from '@ember/application';
 import { run as emberRunLoop } from '@ember/runloop';
 import { set, get, computed } from '@ember/object';
-import { getOwner } from '@ember/application';
 import { assign } from '@ember/polyfills';
 import { default as RSVP, Promise } from 'rsvp';
 import Service from '@ember/service';
@@ -59,6 +59,43 @@ function promiseRecord(internalModelPromise, label) {
   let toReturn = internalModelPromise.then(internalModel => internalModel.getRecord());
 
   return promiseObject(toReturn, label);
+}
+
+function assertRecordsPassedToHasMany(records) {
+  // TODO only allow native arrays
+  assert(
+    `You must pass an array of records to set a hasMany relationship`,
+    Array.isArray(records) || EmberArray.detect(records)
+  );
+  assert(
+    `All elements of a hasMany relationship must be instances of DS.Model, you passed ${inspect(
+      records
+    )}`,
+    (function() {
+      return A(records).every(record => record.hasOwnProperty('_internalModel') === true);
+    })()
+  );
+}
+
+function extractRecordDatasFromRecords(records) {
+  return records.map(extractRecordDataFromRecord);
+}
+
+function extractRecordDataFromRecord(recordOrPromiseRecord) {
+  if (!recordOrPromiseRecord) {
+    return null;
+  }
+
+  if (recordOrPromiseRecord.then) {
+    let content = recordOrPromiseRecord.get && recordOrPromiseRecord.get('content');
+    assert(
+      'You passed in a promise that did not originate from an EmberData relationship. You can only pass promises that come from a belongsTo or hasMany relationship to the get call.',
+      content !== undefined
+    );
+    return content ? recordDataFor(content) : null;
+  }
+
+  return recordDataFor(recordOrPromiseRecord);
 }
 
 // Implementors Note:
@@ -394,6 +431,64 @@ const CoreStore = Service.extend({
     return null;
   },
 
+  _instantiateRecord(internalModel, modelName, recordData, properties?) {
+      // lookupFactory should really return an object that creates
+      // instances with the injections applied
+      let createOptions: any = {
+        store: this,
+        _internalModel: internalModel,
+        currentState: internalModel.currentState,
+        container: null
+      };
+
+      if (properties !== undefined) {
+        assert(
+          `You passed '${properties}' as properties for record creation instead of an object.`,
+          typeof properties === 'object' && properties !== null
+        );
+
+        if ('id' in properties) {
+          internalModel.setId(properties.id);
+        }
+
+        // convert relationship Records to RecordDatas before passing to RecordData
+        let defs = this._relationshipsDefinitionFor(modelName);
+
+        if (defs !== null) {
+          let keys = Object.keys(properties);
+          let relationshipValue;
+
+          for (let i = 0; i < keys.length; i++) {
+            let prop = keys[i];
+            let def = defs[prop];
+
+            if (def !== undefined) {
+              if (def.kind === 'hasMany') {
+                if (DEBUG) {
+                  assertRecordsPassedToHasMany(properties[prop]);
+                }
+                relationshipValue = extractRecordDatasFromRecords(properties[prop]);
+              } else {
+                relationshipValue = extractRecordDataFromRecord(properties[prop]);
+              }
+
+              properties[prop] = relationshipValue;
+            }
+          }
+        }
+      }
+
+      let additionalCreateOptions = recordData._initRecordCreateOptions(properties);
+      assign(createOptions, additionalCreateOptions);
+
+      if (setOwner) {
+        // ensure that `getOwner(this)` works inside a model instance
+        setOwner(createOptions, getOwner(this));
+      } else {
+        createOptions.container = this.container;
+      }
+      return this.instantiateRecord(modelName, createOptions);
+  },
   // .................
   // . DELETE RECORD .
   // .................

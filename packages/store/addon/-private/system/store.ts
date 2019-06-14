@@ -147,7 +147,6 @@ const Store = CoreStore.extend({
     }
   },
 
-
   _modelFactoryFor(modelName) {
     if (DEBUG) {
       assertDestroyedStoreOnly(this, '_modelFactoryFor');

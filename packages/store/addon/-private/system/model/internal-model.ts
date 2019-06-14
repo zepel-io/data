@@ -1,7 +1,6 @@
 import { set, get } from '@ember/object';
 import EmberError from '@ember/error';
 import { default as EmberArray, A } from '@ember/array';
-import { setOwner, getOwner } from '@ember/application';
 import { run } from '@ember/runloop';
 import { assign } from '@ember/polyfills';
 import RSVP, { Promise } from 'rsvp';
@@ -266,63 +265,7 @@ export default class InternalModel {
     if (!this._record && !this._isDematerializing) {
       let { store } = this;
 
-      // lookupFactory should really return an object that creates
-      // instances with the injections applied
-      let createOptions: any = {
-        store,
-        _internalModel: this,
-        currentState: this.currentState,
-        container: null
-      };
-
-      if (properties !== undefined) {
-        assert(
-          `You passed '${properties}' as properties for record creation instead of an object.`,
-          typeof properties === 'object' && properties !== null
-        );
-
-        if ('id' in properties) {
-          this.setId(properties.id);
-        }
-
-        // convert relationship Records to RecordDatas before passing to RecordData
-        let defs = store._relationshipsDefinitionFor(this.modelName);
-
-        if (defs !== null) {
-          let keys = Object.keys(properties);
-          let relationshipValue;
-
-          for (let i = 0; i < keys.length; i++) {
-            let prop = keys[i];
-            let def = defs[prop];
-
-            if (def !== undefined) {
-              if (def.kind === 'hasMany') {
-                if (DEBUG) {
-                  assertRecordsPassedToHasMany(properties[prop]);
-                }
-                relationshipValue = extractRecordDatasFromRecords(properties[prop]);
-              } else {
-                relationshipValue = extractRecordDataFromRecord(properties[prop]);
-              }
-
-              properties[prop] = relationshipValue;
-            }
-          }
-        }
-      }
-
-      let additionalCreateOptions = this._recordData._initRecordCreateOptions(properties);
-      assign(createOptions, additionalCreateOptions);
-
-      if (setOwner) {
-        // ensure that `getOwner(this)` works inside a model instance
-        setOwner(createOptions, getOwner(store));
-      } else {
-        createOptions.container = store.container;
-      }
-
-      this._record = store.instantiateRecord(this.modelName, createOptions);
+      this._record = store._instantiateRecord(this, this.modelName, this._recordData, properties);
 
       this._triggerDeferredTriggers();
     }

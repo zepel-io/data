@@ -177,7 +177,7 @@ export default class FetchManager {
 
   _flushPendingSave(pending: PendingSaveItem) {
     let { snapshot, resolver, identifier } = pending;
-    let adapter = this._adapterCache.adapterFor(identifier.type);
+    let adapter = this._store.adapterFor(identifier.type);
     let operation;
     let recordData: RelationshipRecordData = this._store.recordDataForIdentifier(identifier);
 
@@ -336,7 +336,7 @@ export default class FetchManager {
 
     let identifier = fetchItem.identifier;
     let modelName = identifier.type;
-    let adapter = this._adapterCache.adapterFor(modelName);
+    let adapter = this._store.adapterFor(modelName);
 
     assert(`You tried to find a record but you have no adapter (for ${modelName})`, adapter);
     assert(
@@ -461,7 +461,6 @@ export default class FetchManager {
     }
   }
 
-
   _findMany(adapter: any, store: any, modelName: string, snapshots: Snapshot[], identifiers: RecordIdentifier[], optionsMap) {
     let modelClass = store.modelFor(modelName); // `adapter.findMany` gets the modelClass still
     let ids = snapshots.map((s) => s.id);
@@ -529,7 +528,7 @@ export default class FetchManager {
 
   _flushPendingFetchForType(pendingFetchItems: PendingFetchItem[], modelName: string) {
     let store = this;
-    let adapter = this._adapterCache.adapterFor(modelName);
+    let adapter = this._store.adapterFor(modelName);
     let shouldCoalesce = !!adapter.findMany && adapter.coalesceFindRequests;
     let totalItems = pendingFetchItems.length;
     let identifiers = new Array(totalItems);
