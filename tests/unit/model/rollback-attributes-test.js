@@ -554,6 +554,7 @@ test(`when destroying a record setup the record state to invalid, the record's a
     return dog.destroyRecord().catch(reason => {
       //assert.equal(reason, error);
 
+      debugger
       assert.equal(dog.get('isError'), false, 'must not be error');
       assert.equal(dog.get('isDeleted'), true, 'must be deleted');
       assert.equal(dog.get('isValid'), false, 'must not be valid');
