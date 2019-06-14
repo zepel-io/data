@@ -11,6 +11,7 @@ import { normalizeResponseHelper } from './store/serializer-response';
 import { serializerForAdapter } from './store/serializers';
 import { InvalidError } from '@ember-data/adapter/error';
 import coerceId from './coerce-id';
+import Ember from 'ember';
 
 import {
   _findHasMany,
@@ -464,7 +465,7 @@ export default class FetchManager {
   _findMany(adapter: any, store: any, modelName: string, snapshots: Snapshot[], identifiers: RecordIdentifier[], optionsMap) {
     let modelClass = store.modelFor(modelName); // `adapter.findMany` gets the modelClass still
     let ids = snapshots.map((s) => s.id);
-    let promise = adapter.findMany(store, modelClass, ids, snapshots);
+    let promise = adapter.findMany(store, modelClass, ids, Ember.A(snapshots));
     let label = `DS: Handle Adapter#findMany of '${modelName}'`;
 
     if (promise === undefined) {
