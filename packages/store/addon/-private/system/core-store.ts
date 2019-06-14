@@ -2274,7 +2274,7 @@ const CoreStore = Service.extend({
     @param {Object} jsonApiDoc
     @return {DS.InternalModel|Array<DS.InternalModel>} pushed InternalModel(s)
   */
-  _push(jsonApiDoc: any) {
+  _push(jsonApiDoc) {
     if (DEBUG) {
       assertDestroyingStore(this, '_push');
     }
@@ -2302,14 +2302,12 @@ const CoreStore = Service.extend({
         return null;
       }
 
-      /*
       assert(
         `Expected an object in the 'data' property in a call to 'push' for ${
           jsonApiDoc.type
         }, but was ${typeOf(jsonApiDoc.data)}`,
         typeOf(jsonApiDoc.data) === 'object'
       );
-      */
 
       return this._pushInternalModel(jsonApiDoc.data);
     });
