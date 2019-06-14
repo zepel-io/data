@@ -149,7 +149,7 @@ function promiseRecord(internalModelPromise, label) {
   @namespace DS
   @extends Ember.Service
 */
-const DefaultStore = Service.extend({
+const CoreStore = Service.extend({
   /**
     @method init
     @private
@@ -2894,4 +2894,4 @@ if (DEBUG) {
   };
 }
 
-export default DefaultStore;
+export default CoreStore;

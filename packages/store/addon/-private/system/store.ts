@@ -1,7 +1,7 @@
 /**
   @module ember-data
 */
-import DefaultStore from './default-store';
+import CoreStore from './core-store';
 import { assert, deprecate, warn, inspect } from '@ember/debug';
 import normalizeModelName from './normalize-model-name';
 import RecordDataDefault from './model/record-data';
@@ -100,7 +100,7 @@ import ShimModelClass from './model/shim-model-class';
   @namespace DS
   @extends Ember.Service
 */
-const Store = DefaultStore.extend({
+const Store = CoreStore.extend({
   /**
     @method init
     @private
