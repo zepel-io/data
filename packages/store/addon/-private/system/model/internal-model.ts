@@ -1185,6 +1185,7 @@ export default class InternalModel {
       this.send('becameInvalid');
       this._recordData.commitWasRejected({}, jsonApiErrors);
     } else {
+      this.send('becameError');
       this._recordData.commitWasRejected({});
     }
   }
