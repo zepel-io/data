@@ -269,7 +269,6 @@ export default class InternalModel {
 
       this._triggerDeferredTriggers();
     }
-
     return this._record;
   }
 

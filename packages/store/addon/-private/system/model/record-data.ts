@@ -407,6 +407,7 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
 
     if (this.isNew()) {
       this.removeFromInverseRelationships(true);
+      this._isDeleted = true;
     }
 
     this._inFlightAttributes = null;

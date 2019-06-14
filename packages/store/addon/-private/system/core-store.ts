@@ -487,7 +487,10 @@ const CoreStore = Service.extend({
       } else {
         createOptions.container = this.container;
       }
-      return this.instantiateRecord(modelName, createOptions);
+
+
+      //TODO Igor pass a wrapper instead of RD
+      return this.instantiateRecord(modelName, createOptions, recordData);
   },
   // .................
   // . DELETE RECORD .
