@@ -6,6 +6,7 @@ export { default as Store } from './system/store';
 export { default as Snapshot } from './system/snapshot';
 export { errorsHashToArray, errorsArrayToHash } from './system/errors-utils';
 
+export { identifierForModel } from './system/record-identifier';
 
 // maybe public ?
 export {
