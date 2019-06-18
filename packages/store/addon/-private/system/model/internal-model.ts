@@ -19,7 +19,7 @@ import RecordDataDefault from './record-data';
 import RecordData from '../../ts-interfaces/record-data';
 import { JsonApiResource, JsonApiValidationError } from '../../ts-interfaces/record-data-json-api';
 import { errorsHashToArray, errorsArrayToHash } from '../errors-utils';
-import { identifierFor } from '../record-identifier';
+import { identifierForIM } from '../record-identifier';
 // import RecordDataDefault, { RecordData, JsonApiResource, JsonApiValidationError, JsonApiError, ChangedAttributesHash } from './record-data';
 
 /*
@@ -728,7 +728,7 @@ export default class InternalModel {
     @private
   */
   createSnapshot(options) {
-    return new Snapshot(options, identifierFor(this), this.store);
+    return new Snapshot(options, identifierForIM(this), this.store);
   }
 
   /*

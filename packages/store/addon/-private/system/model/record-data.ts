@@ -188,6 +188,7 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
   // PUBLIC API
 
   getResourceIdentifier(): JsonApiResourceIdentity {
+    debugger
     return {
       id: this.id,
       type: this.modelName,

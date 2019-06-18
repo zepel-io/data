@@ -28,7 +28,7 @@ import { _bind, _guard, _objectIsAlive, guardDestroyedStore } from './store/comm
 import recordDataFor from './record-data-for';
 import ShimModelClass from './model/shim-model-class';
 import FetchManager from './fetch-manager';
-import { identifierFor, RecordIdentifier } from './record-identifier';
+import { identifierForIM, RecordIdentifier } from './record-identifier';
 import { AdapterCache } from './adapter-cache';
 
 import {
@@ -943,7 +943,7 @@ const CoreStore = Service.extend({
   },
 
   _scheduleFetch(internalModel, options) {
-    return this._fetchManager.scheduleFetch(identifierFor(internalModel), options, this.generateStackTracesForTrackedRequests);
+    return this._fetchManager.scheduleFetch(identifierForIM(internalModel), options, this.generateStackTracesForTrackedRequests);
   },
 
   /**
@@ -2006,7 +2006,7 @@ const CoreStore = Service.extend({
     internalModel._recordData.willCommit();
     //TODO Remove
     internalModel.send('willCommit');
-    let promise = this._fetchManager.scheduleSave(identifierFor(internalModel), options);
+    let promise = this._fetchManager.scheduleSave(identifierForIM(internalModel), options);
     promise = promise.then(payload => {
       /*
       Note to future spelunkers hoping to optimize.

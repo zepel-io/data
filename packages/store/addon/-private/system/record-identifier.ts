@@ -1,4 +1,5 @@
 import InternalModel from './model/internal-model';
+import { RecordData } from '..';
 export interface RecordIdentifier {
     type: string;
     id: string | null;
@@ -6,19 +7,24 @@ export interface RecordIdentifier {
 }
 
 let lid = 1;
-export function identifierFor(im: InternalModel): RecordIdentifier {
-    if (!im.clientId) {
-        im.clientId = '' + lid;
-        lid++;
-    }
-    return {
-        type: im.modelName,
-        id: im.id,
-        lid: im.clientId
-    }
+export function identifierForIM(im: InternalModel): RecordIdentifier {
+    return identifierForRD(im._recordData);
 }
 
 // TODO 
 export function identifierForModel(model): RecordIdentifier  {
-    return identifierFor(model._internalModel);
+    debugger
+    return identifierForRD((model._internalModel && model._internalModel._recordData) || model._recordData);
+}
+
+export function identifierForRD(rd: RecordData): RecordIdentifier {
+    if (!rd.__clientId) {
+        rd.__clientId = rd.clientId || '' + lid;
+        lid++;
+    }
+    return {
+        type: rd.modelName,
+        id: rd.id,
+        lid: rd.__clientId
+    }
 }

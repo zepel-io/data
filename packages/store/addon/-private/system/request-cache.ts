@@ -1,4 +1,4 @@
-import { RecordIdentifier, identifierFor } from "./record-identifier";
+import { RecordIdentifier, identifierForIM } from "./record-identifier";
 import { default as RSVP, Promise } from 'rsvp';
 import { DEBUG } from '@glimmer/env';
 import { run as emberRunLoop } from '@ember/runloop';
@@ -44,6 +44,7 @@ export default class RequestCache {
   enqueue(promise: Promise<any>, queryRequest: Request) {
     if ('identifier' in queryRequest.data) {
       let query: FindRecordQuery = queryRequest.data;
+      debugger
       let lid = query.identifier.lid;
       if (!this._pending[lid]) {
         this._pending[lid] = [];

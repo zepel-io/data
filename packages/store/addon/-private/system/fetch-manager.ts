@@ -1,4 +1,4 @@
-import { RecordIdentifier, identifierFor } from "./record-identifier";
+import { RecordIdentifier, identifierForIM } from "./record-identifier";
 import { default as RSVP, Promise } from 'rsvp';
 import { DEBUG } from '@glimmer/env';
 import { run as emberRunLoop } from '@ember/runloop';
