@@ -95,10 +95,16 @@ const Model = EmberObject.extend(Evented, {
         this._errorRequests = [];
         this._lastError = null;
       }
+      this._notifyNetworkChanges();
     });
     this._invalidRequests = [];
     this._errorRequests = [];
     this._lastError = null;
+  },
+
+
+  _notifyNetworkChanges: function() {
+    ['isSaving', 'isValid', 'isError', 'adapterError', 'isReloading'].forEach((key) => this.notifyPropertyChange(key))
   },
   /**
     If this property is `true` the record is in the `empty`
@@ -199,7 +205,7 @@ const Model = EmberObject.extend(Evented, {
   isSaving: computed(function () {
     let requests = this.store.requestCache.getPendingRequests(identifierForModel(this));
     return !!requests.find((req) => req.request.data.op === 'saveRecord');
-  }).volatile(),
+  }),
 
   /**
   /**
@@ -292,7 +298,7 @@ const Model = EmberObject.extend(Evented, {
         return false;
       }
     }
-  }).volatile(),
+  }),
   
   _getInvalidRequest() {
     return this._invalidRequests[this._invalidRequests.length - 1];
@@ -305,6 +311,7 @@ const Model = EmberObject.extend(Evented, {
   _markInvalidRequestAsClean() {
     this._invalidRequests = [];
     this._lastError = null;
+    this._notifyNetworkChanges();
     /*
     let invalidRequest = this._getInvalidRequest();
     if (invalidRequest) {
@@ -348,11 +355,12 @@ const Model = EmberObject.extend(Evented, {
       }
 
     }
-  }).volatile(),
+  }),
 
   _markErrorRequestAsClean() {
     this._errorRequests = [];
     this._lastError = null;
+    this._notifyNetworkChanges();
     /*j
     let errorRequest = this._getErrorRequest();
     if (errorRequest) {
@@ -416,7 +424,7 @@ const Model = EmberObject.extend(Evented, {
   isReloading: computed(function () {
     let requests = this.store.requestCache.getPendingRequests(identifierForModel(this));
     return !!requests.find((req) => req.request.data.options.isReloading);;
-  }).volatile(),
+  }),
 
   /**
     All ember models have an id property. This is an identifier
@@ -544,7 +552,7 @@ const Model = EmberObject.extend(Evented, {
       return null;
     }
     return request.result && request.result.error;
-  }).volatile(),
+  }),
 
   invalidErrorsChanged(jsonApiErrors) {
     this._clearErrorMessages();
