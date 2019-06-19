@@ -79,6 +79,27 @@ const retrieveFromCurrentState = computed('currentState', function (key) {
   @uses Ember.Evented
 */
 const Model = EmberObject.extend(Evented, {
+  init() {
+    this._super(...arguments);
+    this.store.requestCache.subscribe(identifierForModel(this), (request) => {
+      if (request.state === 'rejected') {
+        // TODO filter out queries
+        this._lastError = request;
+        if (!(request.result && request.result.error instanceof InvalidError)) {
+          this._errorRequests.push(request);
+        } else {
+          this._invalidRequests.push(request);
+        }
+      } else if (request.state ==='fulfilled') {
+        this._invalidRequests = [];
+        this._errorRequests = [];
+        this._lastError = null;
+      }
+    });
+    this._invalidRequests = [];
+    this._errorRequests = [];
+    this._lastError = null;
+  },
   /**
     If this property is `true` the record is in the `empty`
     state. Empty is the first state all records enter after they have
@@ -274,6 +295,7 @@ const Model = EmberObject.extend(Evented, {
   }).volatile(),
   
   _getInvalidRequest() {
+    return this._invalidRequests[this._invalidRequests.length - 1];
     let request = this.store.requestCache.getLastRequest(identifierForModel(this));
     if (request && request.state === 'rejected' && req.result.error instanceof InvalidError) {
       return request;
@@ -281,10 +303,14 @@ const Model = EmberObject.extend(Evented, {
   },
 
   _markInvalidRequestAsClean() {
+    this._invalidRequests = [];
+    this._lastError = null;
+    /*
     let invalidRequest = this._getInvalidRequest();
     if (invalidRequest) {
       ignoreInvalidRequestsMap.set(invalidRequest, true);
     }
+    */
   },
 
   _getInvalidRequestsToIgnore() {
@@ -325,10 +351,14 @@ const Model = EmberObject.extend(Evented, {
   }).volatile(),
 
   _markErrorRequestAsClean() {
+    this._errorRequests = [];
+    this._lastError = null;
+    /*j
     let errorRequest = this._getErrorRequest();
     if (errorRequest) {
       ignoreErrorRequestsMap.set(errorRequest, true);
     }
+    */
   },
 
   _getErrorRequestsToIgnore() {
@@ -336,6 +366,8 @@ const Model = EmberObject.extend(Evented, {
   },
 
   _getErrorRequest() {
+    return this._errorRequests[this._errorRequests.length - 1];
+
     let request = this.store.requestCache.getLastRequest(identifierForModel(this));
     if (request && request.state === 'rejected' && !(req.result && req.result.error instanceof InvalidError)) {
       return request; 
@@ -507,8 +539,8 @@ const Model = EmberObject.extend(Evented, {
   */
   adapterError: computed(function () {
     //debugger
-    let request = this.store.requestCache.getLastRequest(identifierForModel(this));
-    if (!request || request.state !== 'rejected') {
+    let request = this._lastError;
+    if (!request) {
       return null;
     }
     return request.result && request.result.error;
@@ -1328,9 +1360,6 @@ if (DEBUG) {
   Model.reopen({
     init() {
       this._super(...arguments);
-      this.store.requestCache.subscribe(identifierForModel(this), function(request) {
-        debugger
-      });
 
       if (!this._internalModel) {
         throw new EmberError(
