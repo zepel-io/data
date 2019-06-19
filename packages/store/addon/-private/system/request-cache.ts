@@ -35,10 +35,12 @@ export default class RequestCache {
 
   _pending: { [lid: string]: InternalRequest[] }
   _done: { [lid: string]: InternalRequest[] }
+  _subscriptions: { [lid: string]: Function[] }
 
   constructor() {
     this._pending = Object.create(null);
     this._done = Object.create(null);
+    this._subscriptions = Object.create(null);
   }
 
   enqueue(promise: Promise<any>, queryRequest: Request) {
@@ -55,6 +57,7 @@ export default class RequestCache {
         _touching: [query.identifier]
       }
       this._pending[lid].push(request);
+      this._triggerSubscriptions(request);
       promise.then((result) => {
         this._dequeue(lid, request);
         let finalizedRequest = {
@@ -65,6 +68,7 @@ export default class RequestCache {
           result
         }
         this._addDone(finalizedRequest);
+        this._triggerSubscriptions(finalizedRequest);
       }, (error) => {
         this._dequeue(lid, request);
         let finalizedRequest = {
@@ -75,8 +79,17 @@ export default class RequestCache {
           result: error
         }
         this._addDone(finalizedRequest);
+        this._triggerSubscriptions(finalizedRequest);
       });
     }
+  }
+
+  _triggerSubscriptions(req: InternalRequest) {
+    req._touching.forEach((identifier) => {
+      if (this._subscriptions[identifier.lid]) {
+        this._subscriptions[identifier.lid].forEach((callback) => callback(req));
+      }
+    })
   }
 
   _dequeue(lid: string, request: InternalRequest) {
@@ -105,19 +118,25 @@ export default class RequestCache {
     });
   }
 
-  getPending(identifier: RecordIdentifier): RequestState[] {
+  subscribe(identifier: RecordIdentifier, callback: Function) {
+    if (!this._subscriptions[identifier.lid]) {
+      this._subscriptions[identifier.lid] = [];
+    }
+    this._subscriptions[identifier.lid].push(callback);
+  }
+
+  getPendingRequests(identifier: RecordIdentifier): RequestState[] {
     if (this._pending[identifier.lid]) {
       return this._pending[identifier.lid];
     }
     return [];
   }
 
-  // TODO Name!!
-  getFinished(identifier: RecordIdentifier): RequestState[] {
-    if (this._done[identifier.lid]) {
-      return this._done[identifier.lid];
+  getLastRequest(identifier: RecordIdentifier): RequestState | null {
+    let requests = this._done[identifier.lid];
+    if (requests){
+      return requests[requests.length];
     }
-    return [];
+    return null;
   }
-
 }

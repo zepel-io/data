@@ -176,7 +176,7 @@ const Model = EmberObject.extend(Evented, {
     @readOnly
   */
   isSaving: computed(function () {
-    let requests = this.store.requestCache.getPending(identifierForModel(this));
+    let requests = this.store.requestCache.getPendingRequests(identifierForModel(this));
     return !!requests.find((req) => req.request.data.op === 'saveRecord');
   }).volatile(),
 
@@ -274,8 +274,10 @@ const Model = EmberObject.extend(Evented, {
   }).volatile(),
   
   _getInvalidRequest() {
-    let requests = this.store.requestCache.getFinished(identifierForModel(this));
-    return requests.find((req) => req.state === 'rejected' && req.result.error instanceof InvalidError);
+    let request = this.store.requestCache.getLastRequest(identifierForModel(this));
+    if (request && request.state === 'rejected' && req.result.error instanceof InvalidError) {
+      return request;
+    }
   },
 
   _markInvalidRequestAsClean() {
@@ -334,8 +336,10 @@ const Model = EmberObject.extend(Evented, {
   },
 
   _getErrorRequest() {
-    let requests = this.store.requestCache.getFinished(identifierForModel(this));
-    return requests.find((req) => req.state === 'rejected' && !(req.result && req.result.error instanceof InvalidError));
+    let request = this.store.requestCache.getLastRequest(identifierForModel(this));
+    if (request && request.state === 'rejected' && !(req.result && req.result.error instanceof InvalidError)) {
+      return request; 
+    }
   },
 
   /**
@@ -378,7 +382,7 @@ const Model = EmberObject.extend(Evented, {
   */
 
   isReloading: computed(function () {
-    let requests = this.store.requestCache.getPending(identifierForModel(this));
+    let requests = this.store.requestCache.getPendingRequests(identifierForModel(this));
     return !!requests.find((req) => req.request.data.options.isReloading);;
   }).volatile(),
 
@@ -503,13 +507,11 @@ const Model = EmberObject.extend(Evented, {
   */
   adapterError: computed(function () {
     //debugger
-    let requests = this.store.requestCache.getFinished(identifierForModel(this));
-    let request = requests.find((req) => req.state === 'rejected');
-    if (request) {
-      return request.result && request.result.error;
-    } else {
+    let request = this.store.requestCache.getLastRequest(identifierForModel(this));
+    if (!request || request.state !== 'rejected') {
       return null;
     }
+    return request.result && request.result.error;
   }).volatile(),
 
   invalidErrorsChanged(jsonApiErrors) {
@@ -1326,6 +1328,9 @@ if (DEBUG) {
   Model.reopen({
     init() {
       this._super(...arguments);
+      this.store.requestCache.subscribe(identifierForModel(this), function(request) {
+        debugger
+      });
 
       if (!this._internalModel) {
         throw new EmberError(
