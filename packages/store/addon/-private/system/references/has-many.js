@@ -20,7 +20,6 @@ export default class HasManyReference extends Reference {
     this.type = hasManyRelationship.relationshipMeta.type;
     this.parent = parentInternalModel.recordReference;
     this.parentInternalModel = parentInternalModel;
-
     // TODO inverse
   }
 

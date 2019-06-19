@@ -52,6 +52,9 @@ const { ENV } = Ember;
 
 let globalClientIdCounter = 1;
 
+
+let recordToInternalModelMap = new WeakMap();
+
 //Get the materialized model from the internalModel/promise that returns
 //an internal model and return it in a promiseObject. Useful for returning
 //from find methods
@@ -490,7 +493,9 @@ const CoreStore = Service.extend({
 
 
       //TODO Igor pass a wrapper instead of RD
-      return this.instantiateRecord(modelName, createOptions, recordData);
+      let record = this.instantiateRecord(modelName, createOptions, recordData);
+      recordToInternalModelMap.set(record, internalModel);
+      return record;
   },
   // .................
   // . DELETE RECORD .
@@ -541,7 +546,9 @@ const CoreStore = Service.extend({
     if (DEBUG) {
       assertDestroyingStore(this, 'unloadRecord');
     }
-    record.unloadRecord();
+    let internalModel = recordToInternalModelMap.get(record);
+    // TODO we used to check if the record was destroyed here
+    internalModel.unloadRecord();
   },
 
   // ................
@@ -1991,7 +1998,13 @@ const CoreStore = Service.extend({
     @param {Resolver} resolver
     @param {Object} options
   */
-  scheduleSave(internalModel, options) {
+  scheduleSave(internalModelOrRecord, options) {
+    let internalModel;
+    if (internalModelOrRecord instanceof InternalModel) {
+      internalModel = internalModelOrRecord;
+    } else {
+      internalModel = recordToInternalModelMap.get(internalModelOrRecord);
+    }
     let promiseLabel = 'DS: Model#save ' + this;
     let resolver = RSVP.defer(promiseLabel);
     let recordData: RelationshipRecordData = internalModel._recordData;
