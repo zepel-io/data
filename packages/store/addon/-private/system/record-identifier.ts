@@ -13,7 +13,6 @@ export function identifierForIM(im: InternalModel): RecordIdentifier {
 
 // TODO 
 export function identifierForModel(model): RecordIdentifier  {
-    debugger
     return identifierForRD((model._internalModel && model._internalModel._recordData) || model._recordData);
 }
 

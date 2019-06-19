@@ -44,7 +44,6 @@ export default class RequestCache {
   enqueue(promise: Promise<any>, queryRequest: Request) {
     if ('identifier' in queryRequest.data) {
       let query: FindRecordQuery = queryRequest.data;
-      debugger
       let lid = query.identifier.lid;
       if (!this._pending[lid]) {
         this._pending[lid] = [];

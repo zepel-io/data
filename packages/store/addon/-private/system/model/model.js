@@ -309,7 +309,6 @@ const Model = EmberObject.extend(Evented, {
     @readOnly
   */
   isError: computed(function () {
-    debugger
     let errorReq = this._getErrorRequest();
     if (!errorReq) {
       return false;

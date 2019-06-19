@@ -2754,6 +2754,11 @@ const CoreStore = Service.extend({
     return this._adapterCache.adapterFor(modelName);
   },
 
+  serializeRecord(record, options) {
+    let internalModel = recordToInternalModelMap.get(record);
+    // TODO we used to check if the record was destroyed here
+    return internalModel.createSnapshot().serialize(options);
+  },
   // ..............................
   // . RECORD CHANGE NOTIFICATION .
   // ..............................

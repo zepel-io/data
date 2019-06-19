@@ -99,7 +99,6 @@ function ajaxResponse(responses) {
 
   adapter.ajax = function(url, verb, hash) {
     index = counter++;
-    debugger
 
     passedUrl[index] = url;
     passedVerb[index] = verb;
