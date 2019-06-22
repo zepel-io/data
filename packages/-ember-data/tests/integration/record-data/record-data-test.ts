@@ -181,7 +181,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
     assert.equal(get(all, 'length'), 3);
   });
 
-  test("Record Data push, create and save lifecycle igor  ", async function (assert) {
+  test("Record Data push, create and save lifecycle", async function (assert) {
     assert.expect(17);
     let called = 0;
     let createCalled = 0;

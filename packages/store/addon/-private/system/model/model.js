@@ -525,6 +525,7 @@ const Model = EmberObject.extend(Evented, {
   */
   errors: computed(function () {
     let errors = Errors.create();
+    
 
     errors._registerHandlers(
       this._internalModel,
@@ -535,6 +536,21 @@ const Model = EmberObject.extend(Evented, {
         this.send('becameValid');
       }
     );
+    let recordData = recordDataFor(this);
+    debugger
+    let jsonApiErrors;
+    if (recordData.getErrors) {
+      jsonApiErrors = recordData.getErrors();
+      if (jsonApiErrors) {
+        let errorsHash = errorsArrayToHash(jsonApiErrors);
+        let errorKeys = Object.keys(errorsHash);
+    
+        for (let i = 0; i < errorKeys.length; i++) {
+          errors._add(errorKeys[i], errorsHash[errorKeys[i]]);
+        }
+      }
+    }
+
     return errors;
   }).readOnly(),
 

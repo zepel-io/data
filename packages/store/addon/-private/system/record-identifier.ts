@@ -8,7 +8,7 @@ export interface RecordIdentifier {
 
 let lid = 1;
 export function identifierForIM(im: InternalModel): RecordIdentifier {
-    return identifierForRD(im._recordData);
+    return identifierForRD(im._recordData, im.modelName);
 }
 
 // TODO 
@@ -16,13 +16,13 @@ export function identifierForModel(model): RecordIdentifier  {
     return identifierForRD((model._internalModel && model._internalModel._recordData) || model._recordData);
 }
 
-export function identifierForRD(rd: RecordData): RecordIdentifier {
+export function identifierForRD(rd: RecordData, type?: string): RecordIdentifier {
     if (!rd.__clientId) {
         rd.__clientId = rd.clientId || '' + lid;
         lid++;
     }
     return {
-        type: rd.modelName,
+        type: type || rd.modelName,
         id: rd.id,
         lid: rd.__clientId
     }
