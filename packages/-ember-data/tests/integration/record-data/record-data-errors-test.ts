@@ -26,20 +26,10 @@ class Person extends Model {
   // TODO fix the typing for naked attrs
   @attr('string', {})
   name;
-}
 
-class House extends Model {
-  // TODO fix the typing for naked attrs
   @attr('string', {})
-  name;
-
-  @belongsTo('person', { async: false })
-  landlord;
-
-  @hasMany('person', { async: false })
-  tenants;
+  lastName;
 }
-
 
 // TODO: this should work
 // class TestRecordData implements RecordData
@@ -113,8 +103,6 @@ let CustomStore = Store.extend({
   }
 });
 
-let houseHash, davidHash, runspiredHash, igorHash;
-
 module('integration/record-data - Custom RecordData Implementations', function (hooks) {
   setupTest(hooks);
 
@@ -123,40 +111,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
   hooks.beforeEach(function () {
     let { owner } = this;
 
-    houseHash = {
-      type: 'house',
-      id: '1',
-      attributes: {
-        name: 'Moomin'
-      }
-    };
-
-    davidHash = {
-      type: 'person',
-      id: '1',
-      attributes: {
-        name: 'David'
-      }
-    };
-
-    runspiredHash = {
-      type: 'person',
-      id: '2',
-      attributes: {
-        name: 'Runspired'
-      }
-    };
-
-    igorHash = {
-      type: 'person',
-      id: '3',
-      attributes: {
-        name: 'Igor'
-      }
-    };
-
     owner.register('model:person', Person);
-    owner.register('model:house', House);
     owner.register('service:store', CustomStore);
   });
 
@@ -213,7 +168,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
       data: [personHash]
     });
     let person = store.peekRecord('person', '1');
-    person.save().then(() => {}, (err) => {
+    person.save().then(() => { }, (err) => {
 
     });
   });
@@ -258,7 +213,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
       data: [personHash]
     });
     let person = store.peekRecord('person', '1');
-    await person.save().then(() => {}, (err) => {
+    await person.save().then(() => { }, (err) => {
     });
   });
 
@@ -278,11 +233,11 @@ module('integration/record-data - Custom RecordData Implementations', function (
     class LifecycleRecordData extends TestRecordData {
       getErrors(recordIdentifier: RecordIdentifier): JsonApiValidationError[] {
         return [{
-            title: 'Invalid Attribute',
-            detail: '',
-            source: {
-              pointer: '/data/attributes/name',
-            },
+          title: 'Invalid Attribute',
+          detail: '',
+          source: {
+            pointer: '/data/attributes/name',
+          },
         }];
       }
     }
@@ -308,39 +263,46 @@ module('integration/record-data - Custom RecordData Implementations', function (
       data: [personHash]
     });
     let person = store.peekRecord('person', '1');
-    await person.save().then(() => {}, (err) => {
+    await person.save().then(() => { }, (err) => {
 
     });
   });
 
   test("Getting errors from Record Data shows up on the record igor", async function (assert) {
     assert.expect(17);
-    let called = 0;
-    let createCalled = 0;
+    let storeWrapper;
     const personHash = {
       type: 'person',
       id: '1',
       attributes: {
         name: 'Scumbag Dale',
+        lastName: 'something',
       }
     }
     let { owner } = this;
+    let errorsToReturn = [{
+      title: 'Invalid Attribute',
+      detail: '',
+      source: {
+        pointer: '/data/attributes/name',
+      },
+    }];
 
     class LifecycleRecordData extends TestRecordData {
+      constructor(sw) {
+        super();
+        debugger
+        storeWrapper = sw;
+      }
+
       getErrors(recordIdentifier: RecordIdentifier): JsonApiValidationError[] {
-        return [{
-            title: 'Invalid Attribute',
-            detail: '',
-            source: {
-              pointer: '/data/attributes/name',
-            },
-        }];
+        return errorsToReturn;
       }
     }
 
     let TestStore = Store.extend({
       createRecordDataFor(modelName, id, clientId, storeWrapper) {
-        return new LifecycleRecordData();
+        return new LifecycleRecordData(storeWrapper);
       }
     });
 
@@ -349,13 +311,30 @@ module('integration/record-data - Custom RecordData Implementations', function (
 
     store = owner.lookup('service:store');
 
-
     store.push({
       data: [personHash]
     });
     let person = store.peekRecord('person', '1');
-    debugger
-    person.get('errors')
+    let nameError = person.get('errors').errorsFor('name').get('firstObject');
+    assert.equal(nameError.attribute, 'name', 'error shows up on name');
+    assert.equal(person.get('isValid'), false, 'person is not valid');
+    errorsToReturn = []; 
+    storeWrapper.notifyErrorsChange('person', '1');
+    assert.equal(person.get('isValid'), true, 'person is valid');
+    assert.equal(person.get('errors').errorsFor('name').length, 0, 'no errors on name');
+    errorsToReturn =  [{
+      title: 'Invalid Attribute',
+      detail: '',
+      source: {
+        pointer: '/data/attributes/lastName',
+      },
+    }]; 
+    storeWrapper.notifyErrorsChange('person', '1');
+    assert.equal(person.get('isValid'), false, 'person is valid');
+    assert.equal(person.get('errors').errorsFor('name').length, 0, 'no errors on name');
+    let lastNameError = person.get('errors').errorsFor('lastName').get('firstObject');
+    assert.equal(lastNameError.attribute, 'lastName', 'error shows up on lastName');
+
 
   });
 });
