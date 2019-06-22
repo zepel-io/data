@@ -116,7 +116,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
   });
 
   test("Record Data invalid errors", async function (assert) {
-    assert.expect(17);
+    assert.expect(2);
     let called = 0;
     let createCalled = 0;
     const personHash = {
@@ -174,9 +174,7 @@ module('integration/record-data - Custom RecordData Implementations', function (
   });
 
   test("Record Data adapter errors", async function (assert) {
-    assert.expect(17);
-    let called = 0;
-    let createCalled = 0;
+    assert.expect(1);
     const personHash = {
       type: 'person',
       id: '1',
@@ -214,57 +212,6 @@ module('integration/record-data - Custom RecordData Implementations', function (
     });
     let person = store.peekRecord('person', '1');
     await person.save().then(() => { }, (err) => {
-    });
-  });
-
-  test("Record Data adapter errors", async function (assert) {
-    assert.expect(17);
-    let called = 0;
-    let createCalled = 0;
-    const personHash = {
-      type: 'person',
-      id: '1',
-      attributes: {
-        name: 'Scumbag Dale',
-      }
-    }
-    let { owner } = this;
-
-    class LifecycleRecordData extends TestRecordData {
-      getErrors(recordIdentifier: RecordIdentifier): JsonApiValidationError[] {
-        return [{
-          title: 'Invalid Attribute',
-          detail: '',
-          source: {
-            pointer: '/data/attributes/name',
-          },
-        }];
-      }
-    }
-
-    let TestStore = Store.extend({
-      createRecordDataFor(modelName, id, clientId, storeWrapper) {
-        return new LifecycleRecordData();
-      }
-    });
-
-    let TestAdapter = EmberObject.extend({
-      updateRecord() {
-        return Promise.reject();
-      },
-    });
-
-    owner.register('service:store', TestStore);
-    owner.register('adapter:application', TestAdapter, { singleton: false });
-
-    store = owner.lookup('service:store');
-
-    store.push({
-      data: [personHash]
-    });
-    let person = store.peekRecord('person', '1');
-    await person.save().then(() => { }, (err) => {
-
     });
   });
 
@@ -334,7 +281,5 @@ module('integration/record-data - Custom RecordData Implementations', function (
     assert.equal(person.get('errors').errorsFor('name').length, 0, 'no errors on name');
     let lastNameError = person.get('errors').errorsFor('lastName').get('firstObject');
     assert.equal(lastNameError.attribute, 'lastName', 'error shows up on lastName');
-
-
   });
 });
