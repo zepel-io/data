@@ -219,6 +219,10 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
   pushData(data: JsonApiResource, calculateChange: boolean) {
     let changedKeys;
 
+    if (this._isNew) {
+      this._isNew = false;
+      this,this.notifyStateChange();
+    }
     if (calculateChange) {
       changedKeys = this._changedKeys(data.attributes);
     }
@@ -410,6 +414,8 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
     if (this.isNew()) {
       this.removeFromInverseRelationships(true);
       this._isDeleted = true;
+      //TODO show isNew as false after a rollback seems wrong
+      this._isNew = false;
     }
 
     this._inFlightAttributes = null;
