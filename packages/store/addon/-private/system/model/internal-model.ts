@@ -1135,6 +1135,7 @@ export default class InternalModel {
   notifyErrorsChange() {
     let jsonApiErrors = this._recordData.getErrors() || [];
     // TODO NOW tighten this check
+    // don't think we need this
     let invalidErrors: JsonApiValidationError[] = jsonApiErrors.filter((err) => err.source !== undefined && err.title !== undefined) as JsonApiValidationError[];
     this.notifyInvalidErrorsChange(invalidErrors);
   }
@@ -1143,6 +1144,15 @@ export default class InternalModel {
     this.getRecord().invalidErrorsChanged(jsonApiErrors);
   }
 
+  notifyStateChange(key) {
+    if (this.hasRecord) {
+      if (key === 'isNew') {
+        this.getRecord().notifyPropertyChange('isNew');
+      } else if (key === 'isDeleted') {
+        this.getRecord().notifyPropertyChange('isDeleted');
+      }
+    }
+  }
   /*
     @method adapterror
     @private

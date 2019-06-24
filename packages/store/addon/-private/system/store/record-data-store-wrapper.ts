@@ -107,4 +107,12 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
       internalModel.destroyFromRecordData();
     }
   }
+
+  notifyStateChange(modelName: string, id: string | null, clientId: string | null, key: string): void {
+    debugger
+    let internalModel = this.store._getInternalModelForId(modelName, id, clientId);
+    if (internalModel) {
+      internalModel.notifyStateChange(key);
+    }
+  }
 }

@@ -248,7 +248,7 @@ const Model = EmberObject.extend(Evented, {
  // TODO cleanup
   isDeleted: computed(function () {
     return recordDataFor(this).isDeleted();
-  }).volatile(),
+  }),
   /**
     If this property is `true` the record is in the `new` state. A
     record will be in the `new` state when it has been created on the
@@ -270,7 +270,16 @@ const Model = EmberObject.extend(Evented, {
     @type {Boolean}
     @readOnly
   */
-  isNew: retrieveFromCurrentState,
+  isNew: computed(function () {
+    let recordData = recordDataFor(this); 
+    if (recordData.isNew) {
+      return recordData.isNew();
+    } else {
+      return get(this._internalModel.currentState, 'isNew');
+    }
+    //return recordDataFor(this).isDeleted();
+  }),
+  // retrieveFromCurrentState,
 
 
   /**

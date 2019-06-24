@@ -35,13 +35,7 @@ class Person extends Model {
 // class TestRecordData implements RecordData
 class TestRecordData {
 
-  commitWasRejected(recordIdentifier: RecordIdentifier, errors?: JsonApiValidationError[]): void {
-
-  }
-
-  getErrors(recordIdentifier: RecordIdentifier): JsonApiValidationError[] {
-    return [];
-  }
+  commitWasRejected(): void { }
 
   // Use correct interface once imports have been fix
   _storeWrapper: any;
@@ -103,7 +97,7 @@ let CustomStore = Store.extend({
   }
 });
 
-module('integration/record-data - Custom RecordData Errors', function (hooks) {
+module('integration/record-data - Record Data State', function (hooks) {
   setupTest(hooks);
 
   let store;
@@ -115,10 +109,14 @@ module('integration/record-data - Custom RecordData Errors', function (hooks) {
     owner.register('service:store', CustomStore);
   });
 
-  test("Record Data invalid errors", async function (assert) {
-    assert.expect(2);
-    let called = 0;
-    let createCalled = 0;
+  test("Record Data state saving", async function (assert) {
+    assert.expect(3);
+    let isDeleted, isNew, isDeletionCommitted;
+    let calledDelete = false;
+    let calledUpdate = false;
+    let calledCreate = false;
+    let storeWrapper;
+
     const personHash = {
       type: 'person',
       id: '1',
@@ -129,32 +127,47 @@ module('integration/record-data - Custom RecordData Errors', function (hooks) {
     let { owner } = this;
 
     class LifecycleRecordData extends TestRecordData {
-      commitWasRejected(recordIdentifier, errors) {
-        assert.equal(errors[0].detail, 'is a generally unsavoury character', 'received the error');
-        assert.equal(errors[0].source.pointer, '/data/attributes/name', 'pointer is correct');
+      constructor(sw) {
+        super();
+        storeWrapper = sw;
+      }
+
+      isNew(): boolean {
+        return isNew;
+      }
+
+      isDeleted(): boolean {
+        return isDeleted;
+      }
+
+      isDeletionCommitted(identifier: RecordIdentifier): boolean {
+        return isDeletionCommitted;
+      }
+
+      setIsDeleted(identifier: RecordIdentifier, isDeleted: boolean): void {
+
       }
     }
 
     let TestStore = Store.extend({
       createRecordDataFor(modelName, id, clientId, storeWrapper) {
-        return new LifecycleRecordData();
+        return new LifecycleRecordData(storeWrapper);
       }
     });
 
     let TestAdapter = EmberObject.extend({
+      deleteRecord() {
+        calledDelete = true;
+        return Promise.resolve();
+      },
+
       updateRecord() {
-        return Promise.reject(new InvalidError([
-          {
-            title: 'Invalid Attribute',
-            detail: 'is a generally unsavoury character',
-            source: {
-              pointer: '/data/attributes/name',
-            },
-          },
-        ]));
+        calledUpdate = true;
+        return Promise.resolve();
       },
 
       createRecord() {
+        calledCreate = true;
         return Promise.resolve();
       }
     });
@@ -167,82 +180,62 @@ module('integration/record-data - Custom RecordData Errors', function (hooks) {
     store.push({
       data: [personHash]
     });
+
     let person = store.peekRecord('person', '1');
-    person.save().then(() => { }, (err) => {
-    });
+    isNew = true;
+    await person.save();
+    assert.equal(calledCreate, true, 'called create if record isNew');
+
+    isNew = false;
+    isDeleted = true;
+    await person.save();
+    assert.equal(calledDelete, true, 'called delete if record isDeleted');
+
+    isNew = false;
+    isDeleted = false;
+
+    await person.save();
+    assert.equal(calledUpdate, true, 'called update if record isnt deleted or new');
   });
 
-  test("Record Data adapter errors", async function (assert) {
-    assert.expect(1);
-    const personHash = {
-      type: 'person',
-      id: '1',
-      attributes: {
-        name: 'Scumbag Dale',
-      }
-    }
-    let { owner } = this;
-
-    class LifecycleRecordData extends TestRecordData {
-      commitWasRejected(recordIdentifier, errors) {
-        assert.equal(errors, undefined, 'Did not pass adapter errors');
-      }
-    }
-
-    let TestStore = Store.extend({
-      createRecordDataFor(modelName, id, clientId, storeWrapper) {
-        return new LifecycleRecordData();
-      }
-    });
-
-    let TestAdapter = EmberObject.extend({
-      updateRecord() {
-        return Promise.reject();
-      },
-    });
-
-    owner.register('service:store', TestStore);
-    owner.register('adapter:application', TestAdapter, { singleton: false });
-
-    store = owner.lookup('service:store');
-
-    store.push({
-      data: [personHash]
-    });
-    let person = store.peekRecord('person', '1');
-    await person.save().then(() => { }, (err) => {
-    });
-  });
-
-  test("Getting errors from Record Data shows up on the record igor", async function (assert) {
-    assert.expect(17);
+  test("Record Data state record flags", async function (assert) {
+    assert.expect(5);
+    let isDeleted, isNew, isDeletionCommitted;
+    let calledDelete = false;
+    let calledUpdate = false;
+    let calledCreate = false;
     let storeWrapper;
+
     const personHash = {
       type: 'person',
       id: '1',
       attributes: {
         name: 'Scumbag Dale',
-        lastName: 'something',
       }
     }
     let { owner } = this;
-    let errorsToReturn = [{
-      title: 'Invalid Attribute',
-      detail: '',
-      source: {
-        pointer: '/data/attributes/name',
-      },
-    }];
 
     class LifecycleRecordData extends TestRecordData {
       constructor(sw) {
         super();
-        debugger
         storeWrapper = sw;
       }
 
-      getErrors(recordIdentifier: RecordIdentifier): JsonApiValidationError[] {
-        return errorsToReturn;
+      isNew(): boolean {
+        debugger
+        return isNew;
+      }
+
+      isDeleted(): boolean {
+        return isDeleted;
+      }
+
+      isDeletionCommitted(identifier: RecordIdentifier): boolean {
+        return isDeletionCommitted;
+      }
+
+      setIsDeleted(identifier: RecordIdentifier, isDeleted: boolean): void {
+
       }
     }
 
@@ -252,31 +245,33 @@ module('integration/record-data - Custom RecordData Errors', function (hooks) {
       }
     });
 
+
     owner.register('service:store', TestStore);
+
     store = owner.lookup('service:store');
 
     store.push({
       data: [personHash]
     });
+
     let person = store.peekRecord('person', '1');
-    let nameError = person.get('errors').errorsFor('name').get('firstObject');
-    assert.equal(nameError.attribute, 'name', 'error shows up on name');
-    assert.equal(person.get('isValid'), false, 'person is not valid');
-    errorsToReturn = []; 
-    storeWrapper.notifyErrorsChange('person', '1');
-    assert.equal(person.get('isValid'), true, 'person is valid');
-    assert.equal(person.get('errors').errorsFor('name').length, 0, 'no errors on name');
-    errorsToReturn =  [{
-      title: 'Invalid Attribute',
-      detail: '',
-      source: {
-        pointer: '/data/attributes/lastName',
-      },
-    }]; 
-    storeWrapper.notifyErrorsChange('person', '1');
-    assert.equal(person.get('isValid'), false, 'person is valid');
-    assert.equal(person.get('errors').errorsFor('name').length, 0, 'no errors on name');
-    let lastNameError = person.get('errors').errorsFor('lastName').get('firstObject');
-    assert.equal(lastNameError.attribute, 'lastName', 'error shows up on lastName');
+    isNew = true;
+
+    storeWrapper.notifyStateChange('person', '1', null, 'isNew');
+    assert.equal(person.get('isNew'), true, 'person is new');
+
+    isNew = false;
+    isDeleted = true;
+    storeWrapper.notifyStateChange('person', '1', null, 'isDeleted');
+    storeWrapper.notifyStateChange('person', '1', null, 'isNew');
+
+    assert.equal(person.get('isNew'), false, 'person is not new');
+    assert.equal(person.get('isDeleted'), true, 'person is deleted');
+
+    isNew = false;
+    isDeleted = false;
+    storeWrapper.notifyStateChange('person', '1', null, 'isDeleted');
+    assert.equal(person.get('isNew'), false, 'person is not new');
+    assert.equal(person.get('isDeleted'), false, 'person is not deleted');
   });
 });
