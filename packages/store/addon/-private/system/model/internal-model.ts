@@ -202,6 +202,7 @@ export default class InternalModel {
   }
 
   _isRecordFullyDeleted() {
+    debugger
     if (this._recordData.isDeletionCommitted) {
       return this._recordData.isDeletionCommitted() || (this._recordData.isNew() && this._recordData.isDeleted());
     } else {
@@ -280,6 +281,7 @@ export default class InternalModel {
   }
 
   dematerializeRecord() {
+    debugger
     this._isDematerializing = true;
 
     // TODO IGOR add a test that fails when this is missing, something that involves canceliing a destroy
@@ -387,6 +389,7 @@ export default class InternalModel {
     once all models that refer to it via some relationship are also unloaded.
   */
   unloadRecord() {
+    debugger
     if (this.isDestroyed) {
       return;
     }
@@ -429,6 +432,7 @@ export default class InternalModel {
   // In those scenarios, we make that model's cleanup work, sync.
   //
   destroySync() {
+    debugger
     if (this._isDematerializing) {
       this.cancelDestroy();
     }
@@ -653,6 +657,7 @@ export default class InternalModel {
   }
 
   destroy() {
+    debugger
     // TODO add a better check for ED model
     assert(
       'Cannot destroy an internalModel while its record is materialized',
@@ -1089,7 +1094,6 @@ export default class InternalModel {
     }
   }
 
-
   /*
     If the adapter did not return a hash in response to a commit,
     merge the changed attributes and relationships into the existing
@@ -1144,14 +1148,18 @@ export default class InternalModel {
     this.getRecord().invalidErrorsChanged(jsonApiErrors);
   }
 
-  notifyStateChange(key) {
+  notifyStateChange(key?) {
     if (this.hasRecord) {
-      if (key === 'isNew') {
+      if (!key || key === 'isNew') {
         this.getRecord().notifyPropertyChange('isNew');
-      } else if (key === 'isDeleted') {
+      } 
+      if (!key || key === 'isDeleted') {
         this.getRecord().notifyPropertyChange('isDeleted');
       }
     }
+      if (!key || key === 'isDeletionCommitted') {
+        this.updateRecordArrays();
+      }
   }
   /*
     @method adapterror

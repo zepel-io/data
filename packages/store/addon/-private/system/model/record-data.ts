@@ -197,6 +197,7 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
 
   deleteRecord() {
     this._isDeleted = true;
+    this.notifyStateChange();
   }
 
   isDeleted() {
@@ -208,6 +209,7 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
     if (this._isNew) {
       this._deletionConfirmed();
     }
+    this.notifyStateChange();
   }
 
   isDeletionCommitted(): boolean {
@@ -413,9 +415,9 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
     this._inFlightAttributes = null;
 
     this._clearErrors();
+    this.notifyStateChange();
     return dirtyKeys;
   }
-
 
   _deletionConfirmed() {
     this.removeFromInverseRelationships();
@@ -448,7 +450,12 @@ export default class RecordDataDefault implements RecordData, RelationshipRecord
 
     this._updateChangedAttributes();
     this._clearErrors();
+    this.notifyStateChange();
     return changedKeys;
+  }
+
+  notifyStateChange() {
+    this.storeWrapper.notifyStateChange(this.modelName, this.id, this.clientId);
   }
 
   // get ResourceIdentifiers for "current state"

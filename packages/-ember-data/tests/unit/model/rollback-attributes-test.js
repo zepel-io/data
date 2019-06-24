@@ -519,7 +519,7 @@ module('unit/model/rollbackAttributes - model.rollbackAttributes()', function(ho
     });
   });
 
-  test(`when destroying a record setup the record state to invalid, the record's attributes can be rollbacked`, function(assert) {
+  test(`when destroying a record setup the record state to invalid, the record's attributes can be rollbacked igor3`, function(assert) {
     const Dog = DS.Model.extend({
       name: DS.attr(),
     });

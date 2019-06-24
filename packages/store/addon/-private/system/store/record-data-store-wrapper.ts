@@ -108,8 +108,7 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
     }
   }
 
-  notifyStateChange(modelName: string, id: string | null, clientId: string | null, key: string): void {
-    debugger
+  notifyStateChange(modelName: string, id: string | null, clientId: string | null, key?: string): void {
     let internalModel = this.store._getInternalModelForId(modelName, id, clientId);
     if (internalModel) {
       internalModel.notifyStateChange(key);

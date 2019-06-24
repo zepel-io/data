@@ -7,6 +7,7 @@ import { settled } from '@ember/test-helpers';
 import EmberObject from '@ember/object';
 import { attr, hasMany, belongsTo } from '@ember-data/model';
 import { InvalidError, ServerError } from '@ember-data/adapter/error';
+import Ember from 'ember';
 
 interface RecordIdentifier {
   id?: string;
@@ -198,12 +199,10 @@ module('integration/record-data - Record Data State', function (hooks) {
     assert.equal(calledUpdate, true, 'called update if record isnt deleted or new');
   });
 
-  test("Record Data state record flags", async function (assert) {
-    assert.expect(5);
+  test("Record Data state record flags igor", async function (assert) {
+    assert.expect(9);
     let isDeleted, isNew, isDeletionCommitted;
-    let calledDelete = false;
-    let calledUpdate = false;
-    let calledCreate = false;
+    let calledSetIsDeleted = false;
     let storeWrapper;
 
     const personHash = {
@@ -222,7 +221,6 @@ module('integration/record-data - Record Data State', function (hooks) {
       }
 
       isNew(): boolean {
-        debugger
         return isNew;
       }
 
@@ -235,7 +233,7 @@ module('integration/record-data - Record Data State', function (hooks) {
       }
 
       setIsDeleted(identifier: RecordIdentifier, isDeleted: boolean): void {
-
+        calledSetIsDeleted = true;
       }
     }
 
@@ -244,7 +242,6 @@ module('integration/record-data - Record Data State', function (hooks) {
         return new LifecycleRecordData(storeWrapper);
       }
     });
-
 
     owner.register('service:store', TestStore);
 
@@ -255,6 +252,7 @@ module('integration/record-data - Record Data State', function (hooks) {
     });
 
     let person = store.peekRecord('person', '1');
+    let people = store.peekAll('person');
     isNew = true;
 
     storeWrapper.notifyStateChange('person', '1', null, 'isNew');
@@ -273,5 +271,16 @@ module('integration/record-data - Record Data State', function (hooks) {
     storeWrapper.notifyStateChange('person', '1', null, 'isDeleted');
     assert.equal(person.get('isNew'), false, 'person is not new');
     assert.equal(person.get('isDeleted'), false, 'person is not deleted');
+
+    person.deleteRecord();
+    assert.equal(person.get('isDeleted'), false, 'calling deleteRecord does not automatically set isDeleted flag to true');
+    assert.equal(calledSetIsDeleted, true, 'called setIsDeleted');
+
+    assert.equal(people.get('length'),1, 'live array starting length is 1');
+    isDeletionCommitted = true;
+    Ember.run(() => {
+      storeWrapper.notifyStateChange('person', '1', null, 'isDeletionCommitted');
+    })
+    assert.equal(people.get('length'),0, 'commiting a deletion updates the live array');
   });
 });
