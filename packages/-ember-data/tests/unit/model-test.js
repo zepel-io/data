@@ -1229,7 +1229,7 @@ module('unit/model - Model', function(hooks) {
           source: {
             pointer: '/data/attributes/name'
           } 
-          }]));
+        }]));
       };
 
       store.push({
