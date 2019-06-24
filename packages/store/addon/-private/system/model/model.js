@@ -292,11 +292,14 @@ const Model = EmberObject.extend(Evented, {
     @type {Boolean}
     @readOnly
   */
-  isValid: computed(function () {
+  isValid: computed('errors.length', function () {
+    debugger
     if (this.get('errors.length') > 0) {
       return false;
     }
+    return true;
 
+    /*
     let invalidRequest = this._getInvalidRequest();
     if (!invalidRequest) {
       return true;
@@ -307,6 +310,7 @@ const Model = EmberObject.extend(Evented, {
         return false;
       }
     }
+    */
   }),
   
   _getInvalidRequest() {
@@ -546,7 +550,7 @@ const Model = EmberObject.extend(Evented, {
       }
     );
     let recordData = recordDataFor(this);
-    debugger
+
     let jsonApiErrors;
     if (recordData.getErrors) {
       jsonApiErrors = recordData.getErrors();

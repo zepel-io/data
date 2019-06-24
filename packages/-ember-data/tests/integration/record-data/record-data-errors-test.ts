@@ -214,8 +214,8 @@ module('integration/record-data - Custom RecordData Errors', function (hooks) {
     });
   });
 
-  test("Getting errors from Record Data shows up on the record igor", async function (assert) {
-    assert.expect(17);
+  test("Getting errors from Record Data shows up on the record igor4", async function (assert) {
+    assert.expect(7);
     let storeWrapper;
     const personHash = {
       type: 'person',
@@ -237,7 +237,6 @@ module('integration/record-data - Custom RecordData Errors', function (hooks) {
     class LifecycleRecordData extends TestRecordData {
       constructor(sw) {
         super();
-        debugger
         storeWrapper = sw;
       }
 

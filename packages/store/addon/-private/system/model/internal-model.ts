@@ -1142,6 +1142,7 @@ export default class InternalModel {
     // don't think we need this
     let invalidErrors: JsonApiValidationError[] = jsonApiErrors.filter((err) => err.source !== undefined && err.title !== undefined) as JsonApiValidationError[];
     this.notifyInvalidErrorsChange(invalidErrors);
+    debugger
   }
 
   notifyInvalidErrorsChange(jsonApiErrors: JsonApiValidationError[]) {
