@@ -576,7 +576,7 @@ const RootState = {
       },
 
       reloadRecord(internalModel, { resolve, options }) {
-        resolve(internalModel.store._reloadRecord(internalModel, options));
+        //resolve(internalModel.store._reloadRecord(internalModel, options));
       },
 
       deleteRecord(internalModel) {

@@ -333,8 +333,8 @@ export default class InternalModel {
         store,
         _internalModel: this,
         currentState: this.currentState,
-        isError: this.isError,
-        adapterError: this.error,
+        // isError: this.isError,
+        // adapterError: this.error,
       };
 
       if (properties !== undefined) {
@@ -476,8 +476,8 @@ export default class InternalModel {
     let promiseLabel = 'DS: Model#save ' + this;
     let resolver = RSVP.defer<InternalModel>(promiseLabel);
 
-    this.store.scheduleSave(this, resolver, options);
-    return resolver.promise;
+    return this.store.scheduleSave(this, resolver, options);
+    // return resolver.promise;
   }
 
   startedReloading() {
@@ -505,6 +505,31 @@ export default class InternalModel {
   }
 
   reload(options) {
+    if (true) {
+      if (!options) {
+        options = {};
+      }
+      this.startedReloading();
+      let internalModel = this;
+      let promiseLabel = 'DS: Model#reload of ' + this;
+
+      return internalModel.store
+        ._reloadRecord(internalModel, options)
+        .then(
+          function() {
+            //TODO NOW seems like we shouldn't need to do this
+            return internalModel;
+          },
+          function(error) {
+            throw error;
+          },
+          'DS: Model#reload complete, update flags'
+        )
+        .finally(function() {
+          internalModel.finishedReloading();
+          internalModel.updateRecordArrays();
+        });
+    }
     this.startedReloading();
     let internalModel = this;
     let promiseLabel = 'DS: Model#reload of ' + this;
@@ -745,7 +770,9 @@ export default class InternalModel {
       return this._updatePromiseProxyFor('hasMany', key, { promise, content: manyArray });
     } else {
       assert(
-        `You looked up the '${key}' relationship on a '${this.type.modelName}' with id ${this.id} but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async ('DS.hasMany({ async: true })')`,
+        `You looked up the '${key}' relationship on a '${this.type.modelName}' with id ${
+          this.id
+        } but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async ('DS.hasMany({ async: true })')`,
         !manyArray.anyUnloaded()
       );
 
@@ -904,7 +931,7 @@ export default class InternalModel {
     @private
   */
   createSnapshot(options) {
-    return new Snapshot(this, options);
+    return new Snapshot(options || {}, { id: this.id, lid: this.clientId, type: this.modelName }, this.store);
   }
 
   /*
@@ -1358,6 +1385,7 @@ export default class InternalModel {
       let attribute;
       if (error && parsedErrors) {
         if (!this._recordData.getErrors) {
+          // TODO this seems wrong
           for (attribute in parsedErrors) {
             if (parsedErrors.hasOwnProperty(attribute)) {
               this.addErrorMessageToAttribute(attribute, parsedErrors[attribute]);

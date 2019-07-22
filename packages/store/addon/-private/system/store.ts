@@ -28,6 +28,9 @@ import { _bind, _guard, _objectIsAlive, guardDestroyedStore } from './store/comm
 import { normalizeResponseHelper } from './store/serializer-response';
 import { serializerForAdapter } from './store/serializers';
 import recordDataFor from './record-data-for';
+import FetchManager from './fetch-manager';
+import { AdapterCache } from './adapter-cache';
+import { identifierForIM } from './record-identifier';
 
 import { _find, _findMany, _findHasMany, _findBelongsTo, _findAll, _query, _queryRecord } from './store/finders';
 
@@ -54,6 +57,8 @@ import {
   CollectionResourceDocument,
   JsonApiDocument,
 } from '../ts-interfaces/ember-data-json-api';
+import { requestPromise } from './request-cache';
+
 const badIdFormatAssertion = '`id` passed to `findRecord()` has to be non-empty string or number';
 const emberRun = emberRunLoop.backburner;
 
@@ -72,6 +77,41 @@ type PendingSaveItem = {
 };
 
 let globalClientIdCounter = 1;
+
+function assertRecordsPassedToHasMany(records) {
+  // TODO only allow native arrays
+  assert(
+    `You must pass an array of records to set a hasMany relationship`,
+    Array.isArray(records) || EmberArray.detect(records)
+  );
+  assert(
+    `All elements of a hasMany relationship must be instances of DS.Model, you passed ${inspect(records)}`,
+    (function() {
+      return A(records).every(record => record.hasOwnProperty('_internalModel') === true);
+    })()
+  );
+}
+
+function extractRecordDatasFromRecords(records) {
+  return records.map(extractRecordDataFromRecord);
+}
+
+function extractRecordDataFromRecord(recordOrPromiseRecord) {
+  if (!recordOrPromiseRecord) {
+    return null;
+  }
+
+  if (recordOrPromiseRecord.then) {
+    let content = recordOrPromiseRecord.get && recordOrPromiseRecord.get('content');
+    assert(
+      'You passed in a promise that did not originate from an EmberData relationship. You can only pass promises that come from a belongsTo or hasMany relationship to the get call.',
+      content !== undefined
+    );
+    return content ? recordDataFor(content) : null;
+  }
+
+  return recordDataFor(recordOrPromiseRecord);
+}
 
 // Implementors Note:
 //
@@ -234,6 +274,10 @@ class Store extends Service {
   constructor() {
     super(...arguments);
 
+    this._serializerCache = Object.create(null);
+    this._adapterCache = new AdapterCache(this);
+    this._fetchManager = new FetchManager(this._adapterCache, this);
+
     if (DEBUG) {
       this.shouldAssertMethodCallsOnDestroyedStore = this.shouldAssertMethodCallsOnDestroyedStore || false;
       if (this.shouldTrackAsyncRequests === undefined) {
@@ -287,6 +331,31 @@ class Store extends Service {
       registerWaiter(this.__asyncWaiter);
     }
   }
+
+  getRequestStateService() {
+    return this._fetchManager.requestCache;
+  }
+
+  /**
+    The default adapter to use to communicate to a backend server or
+    other persistence layer. This will be overridden by an application
+    adapter if present.
+
+    If you want to specify `app/adapters/custom.js` as a string, do:
+
+    ```js
+    import Store from '@ember-data/store';
+
+    export default Store.extend({
+      adapter: 'custom',
+    });
+    ```
+
+    @property adapter
+    @default '-json-api'
+    @type {String}
+  */
+  //adapter: '-json-api';
 
   /**
     This property returns the adapter, after resolving a possible
@@ -804,6 +873,21 @@ class Store extends Service {
     return Promise.resolve(internalModel);
   }
 
+  _internalModelForIdentifier(identifier) {
+    return this._internalModelForResource(identifier);
+    /*
+    let internalModel;
+    if (identifier.lid) {
+      internalModel = this._newlyCreatedModelsFor(identifier.type).get(identifier.lid);
+    }
+    if (!internalModel) {
+      internalModel = this._internalModelForId(identifier.type, identifier.id);
+    }
+
+    return internalModel;
+    */
+  }
+
   /**
     This method makes a series of requests to the adapter's `find` method
     and returns a promise that resolves once they are all loaded.
@@ -846,6 +930,7 @@ class Store extends Service {
     @return {Promise} promise
    */
   _fetchRecord(internalModel: InternalModel, options): Promise<InternalModel> {
+    debugger;
     let modelName = internalModel.modelName;
     let adapter = this.adapterFor(modelName);
 
@@ -868,7 +953,24 @@ class Store extends Service {
     return Promise.all(fetches);
   }
 
+  _scheduleFetchThroughFetchManager(internalModel, options = {}) {
+    let generateStackTrace = this.generateStackTracesForTrackedRequests;
+    let promise = this._fetchManager.scheduleFetch(identifierForIM(internalModel), options, generateStackTrace);
+    return promise.then(
+      payload => this._push(payload),
+      error => {
+        if (internalModel.isEmpty()) {
+          internalModel.unloadRecord();
+        }
+        throw error;
+      }
+    );
+  }
+
   _scheduleFetch(internalModel: InternalModel, options): Promise<InternalModel> {
+    if (true) {
+      return this._scheduleFetchThroughFetchManager(internalModel, options);
+    }
     if (internalModel._promiseProxy) {
       return internalModel._promiseProxy;
     }
@@ -920,6 +1022,10 @@ class Store extends Service {
   }
 
   flushAllPendingFetches() {
+    if (true) {
+      return;
+      //assert here
+    }
     if (this.isDestroyed || this.isDestroying) {
       return;
     }
@@ -1181,6 +1287,9 @@ class Store extends Service {
     @return {Promise} promise
   */
   _reloadRecord(internalModel, options) {
+    if (true) {
+      options.isReloading = true;
+    }
     let { id, modelName } = internalModel;
     let adapter = this.adapterFor(modelName);
 
@@ -1449,11 +1558,24 @@ class Store extends Service {
         relationshipIsStale ||
         (!allInverseRecordsAreLoaded && !relationshipIsEmpty));
 
-    // short circuit if we are already loading
-    if (internalModel && internalModel.isLoading()) {
-      return internalModel._promiseProxy.then(() => {
-        return internalModel.getRecord();
-      });
+    if (internalModel) {
+      // short circuit if we are already loading
+      if (true) {
+        // Temporary fix for requests already loading until we move this inside the fetch manager
+        let pendingRequests = this.getRequestStateService()
+          .getPendingRequestsForRecord(identifierForIM(internalModel))
+          .filter(req => req.type === 'query');
+
+        if (pendingRequests.length > 0) {
+          return pendingRequests[0][requestPromise].then(() => internalModel.getRecord());
+        }
+      } else {
+        if (internalModel.isLoading()) {
+          return internalModel._promiseProxy.then(() => {
+            return internalModel.getRecord();
+          });
+        }
+      }
     }
 
     // fetch via link
@@ -2075,6 +2197,35 @@ class Store extends Service {
     }
 
     internalModel.adapterWillCommit();
+    if (true) {
+      let promise = this._fetchManager.scheduleSave(identifierForIM(internalModel), options);
+      promise = promise.then(
+        payload => {
+          /*
+        Note to future spelunkers hoping to optimize.
+        We rely on this `run` to create a run loop if needed
+        that `store._push` and `store.didSaveRecord` will both share.
+   
+        We use `join` because it is often the case that we
+        have an outer run loop available still from the first
+        call to `store._push`;
+       */
+          this._backburner.join(() => {
+            let data = payload && payload.data;
+            this.didSaveRecord(internalModel, { data });
+            if (payload && payload.included) {
+              this._push({ data: null, included: payload.included });
+            }
+          });
+        },
+        ({ error, parsedErrors }) => {
+          this.recordWasInvalid(internalModel, parsedErrors, error);
+          throw error;
+        }
+      );
+
+      return promise;
+    }
     this._pendingSave.push({
       snapshot: snapshot,
       resolver: resolver,
@@ -2091,6 +2242,9 @@ class Store extends Service {
     @private
   */
   flushPendingSave() {
+    if (true) {
+      return;
+    }
     let pending = this._pendingSave.slice();
     this._pendingSave = [];
 
@@ -2151,7 +2305,9 @@ class Store extends Service {
     }
     if (!data) {
       assert(
-        `Your ${internalModel.modelName} record was saved to the server, but the response does not have an id and no id has been set client side. Records must have ids. Please update the server response to provide an id in the response or generate the id on the client side either before saving the record or while normalizing the response.`,
+        `Your ${
+          internalModel.modelName
+        } record was saved to the server, but the response does not have an id and no id has been set client side. Records must have ids. Please update the server response to provide an id in the response or generate the id on the client side either before saving the record or while normalizing the response.`,
         internalModel.id
       );
     }
@@ -2214,6 +2370,15 @@ class Store extends Service {
       assertDestroyingStore(this, 'setRecordId');
     }
     internalModelFactoryFor(this).setRecordId(modelName, newId, clientId);
+  }
+
+  recordDataForIdentifier(identifier) {
+    //TODO TEMP
+    let modelName = identifier.type;
+    let id = identifier.id;
+    let clientId = identifier.lid;
+    let internalModel = this._internalModelForId(modelName, id, clientId);
+    return recordDataFor(internalModel);
   }
 
   // ................

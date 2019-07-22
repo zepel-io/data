@@ -19,6 +19,8 @@ import InternalModel from './internal-model';
 import RootState from './states';
 import { RECORD_DATA_ERRORS, RECORD_DATA_STATE } from '@ember-data/canary-features';
 import coerceId from '../coerce-id';
+import { identifierForModel } from '../record-identifier';
+import { InvalidError } from '@ember-data/adapter/error';
 
 const { changeProperties } = Ember;
 
@@ -110,13 +112,39 @@ if (RECORD_DATA_STATE) {
 const Model = EmberObject.extend(DeprecatedEvented, {
   init() {
     this._super(...arguments);
+
+    if (!this._internalModel) {
+      throw new EmberError(
+        'You should not call `create` on a model. Instead, call `store.createRecord` with the attributes you would like to set.'
+      );
+    }
+
     if (RECORD_DATA_ERRORS) {
       this._invalidRequests = [];
     }
+
+    this.store.getRequestStateService().subscribeForRecord(identifierForModel(this), request => {
+      if (request.state === 'rejected') {
+        // TODO filter out queries
+        this._lastError = request;
+        if (!(request.response && request.response.data instanceof InvalidError)) {
+          this._errorRequests.push(request);
+        } else {
+          this._invalidRequests.push(request);
+        }
+      } else if (request.state === 'fulfilled') {
+        this._invalidRequests = [];
+        this._errorRequests = [];
+        this._lastError = null;
+      }
+      this._notifyNetworkChanges();
+    });
+    this._errorRequests = [];
+    this._lastError = null;
   },
 
   _notifyNetworkChanges: function() {
-    this.notifyPropertyChange('isValid');
+    ['isSaving', 'isValid', 'isError', 'adapterError', 'isReloading'].forEach(key => this.notifyPropertyChange(key));
   },
 
   /**
@@ -336,7 +364,19 @@ const Model = EmberObject.extend(DeprecatedEvented, {
     @type {Boolean}
     @readOnly
   */
-  isError: false,
+  isError: computed(function() {
+    let errorReq = this._errorRequests[this._errorRequests.length - 1];
+    if (!errorReq) {
+      return false;
+    } else {
+      return true;
+    }
+  }),
+  _markErrorRequestAsClean() {
+    this._errorRequests = [];
+    this._lastError = null;
+    this._notifyNetworkChanges();
+  },
 
   /**
     If `true` the store is attempting to reload the record from the adapter.
@@ -353,7 +393,10 @@ const Model = EmberObject.extend(DeprecatedEvented, {
     @type {Boolean}
     @readOnly
   */
-  isReloading: false,
+  isReloading: computed(function() {
+    let requests = this.store.getRequestStateService().getPendingRequestsForRecord(identifierForModel(this));
+    return !!requests.find(req => req.request.data[0].options.isReloading);
+  }),
 
   /**
     All ember models have an id property. This is an identifier
@@ -508,7 +551,13 @@ const Model = EmberObject.extend(DeprecatedEvented, {
     @property adapterError
     @type {AdapterError}
   */
-  adapterError: null,
+  adapterError: computed(function() {
+    let request = this._lastError;
+    if (!request) {
+      return null;
+    }
+    return request.state === 'rejected' && request.response.data;
+  }),
 
   /**
     Create a JSON representation of the record, using the serialization
@@ -807,6 +856,9 @@ const Model = EmberObject.extend(DeprecatedEvented, {
     this._internalModel.rollbackAttributes();
     if (RECORD_DATA_ERRORS) {
       this._markInvalidRequestAsClean();
+    }
+    if (true) {
+      this._markErrorRequestAsClean();
     }
   },
 
@@ -1289,12 +1341,6 @@ if (DEBUG) {
         this._getDeprecatedEventedInfo = () => `${this._internalModel.modelName}#${this.id}`;
       }
 
-      if (!this._internalModel) {
-        throw new EmberError(
-          'You should not call `create` on a model. Instead, call `store.createRecord` with the attributes you would like to set.'
-        );
-      }
-
       if (!isDefaultEmptyDescriptor(this, '_internalModel') || !(this._internalModel instanceof InternalModel)) {
         throw new Error(
           `'_internalModel' is a reserved property name on instances of classes extending Model. Please choose a different property name for ${this.constructor.toString()}`
@@ -1547,7 +1593,11 @@ Model.reopenClass({
     }
 
     assert(
-      `The ${inverseType.modelName}:${inverseName} relationship declares 'inverse: null', but it was resolved as the inverse for ${this.modelName}:${name}.`,
+      `The ${
+        inverseType.modelName
+      }:${inverseName} relationship declares 'inverse: null', but it was resolved as the inverse for ${
+        this.modelName
+      }:${name}.`,
       !inverseOptions || inverseOptions.inverse !== null
     );
 
