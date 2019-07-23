@@ -967,7 +967,7 @@ class Store extends Service {
     );
   }
 
-  _scheduleFetch(internalModel: InternalModel, options): Promise<InternalModel> {
+  _scheduleFetch(internalModel: InternalModel, options): RSVP.Promise<InternalModel> {
     if (true) {
       return this._scheduleFetchThroughFetchManager(internalModel, options);
     }
@@ -1286,7 +1286,7 @@ class Store extends Service {
     @param options optional to include adapterOptions
     @return {Promise} promise
   */
-  _reloadRecord(internalModel, options) {
+  _reloadRecord(internalModel, options): RSVP.Promise<InternalModel> {
     if (true) {
       options.isReloading = true;
     }
@@ -1419,7 +1419,7 @@ class Store extends Service {
     return _findHasMany(adapter, this, internalModel, link, relationship, options);
   }
 
-  _findHasManyByJsonApiResource(resource, parentInternalModel, relationshipMeta, options): Promise<unknown> {
+  _findHasManyByJsonApiResource(resource, parentInternalModel, relationshipMeta, options): RSVP.Promise<unknown> {
     if (!resource) {
       return resolve([]);
     }
@@ -2305,9 +2305,7 @@ class Store extends Service {
     }
     if (!data) {
       assert(
-        `Your ${
-          internalModel.modelName
-        } record was saved to the server, but the response does not have an id and no id has been set client side. Records must have ids. Please update the server response to provide an id in the response or generate the id on the client side either before saving the record or while normalizing the response.`,
+        `Your ${internalModel.modelName} record was saved to the server, but the response does not have an id and no id has been set client side. Records must have ids. Please update the server response to provide an id in the response or generate the id on the client side either before saving the record or while normalizing the response.`,
         internalModel.id
       );
     }

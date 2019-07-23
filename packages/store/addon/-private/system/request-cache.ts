@@ -1,5 +1,5 @@
 import { RecordIdentifier } from './record-identifier';
-import { Request, FindRecordQuery, RequestState } from './fetch-manager';
+import { Request, FindRecordQuery, RequestState, SaveRecordMutation, Operation } from './fetch-manager';
 
 import { _findHasMany, _findBelongsTo, _findAll, _query, _queryRecord } from './store/finders';
 
@@ -17,6 +17,12 @@ export interface InternalRequest extends RequestState {
   [requestPromise]?: Promise<any>;
 }
 
+type RecordOperation = FindRecordQuery | SaveRecordMutation;
+
+function hasRecordIdentifier(op: Operation): op is RecordOperation {
+  return 'recordIdentifier' in op;
+}
+
 export default class RequestCache {
   _pending: { [lid: string]: InternalRequest[] };
   _done: { [lid: string]: InternalRequest[] };
@@ -29,8 +35,8 @@ export default class RequestCache {
   }
 
   enqueue(promise: Promise<any>, queryRequest: Request) {
-    if ('recordIdentifier' in queryRequest.data[0]) {
-      let query: FindRecordQuery = queryRequest.data[0];
+    let query = queryRequest.data[0];
+    if (hasRecordIdentifier(query)) {
       let lid = query.recordIdentifier.lid;
       let type = query.op === 'saveRecord' ? <const>'mutation' : <const>'query';
       if (!this._pending[lid]) {
@@ -92,10 +98,7 @@ export default class RequestCache {
         this._done[identifier.lid] = [];
       }
       // TODO add support for multiple
-      let requestDataOp =
-        request.request.data instanceof Array
-          ? request.request.data[0].op
-          : request.request.data.op;
+      let requestDataOp = request.request.data instanceof Array ? request.request.data[0].op : request.request.data.op;
       this._done[identifier.lid] = this._done[identifier.lid].filter(req => {
         // TODO add support for multiple
         let data;
