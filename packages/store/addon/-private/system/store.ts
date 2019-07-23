@@ -214,7 +214,7 @@ class Store extends Service {
   private _relationshipsDefCache = Object.create(null);
   private _attributesDefCache = Object.create(null);
 
-  private _adapterCache = Object.create(null);
+  private _adapterCache = new AdapterCache(this);
   private _serializerCache = Object.create(null);
   private _storeWrapper = new RecordDataStoreWrapper(this);
 
@@ -235,6 +235,7 @@ class Store extends Service {
   // used to keep track of all the find requests that need to be coalesced
   private _pendingFetch = new Map<string, PendingFetchItem[]>();
 
+  private _fetchManager: FetchManager;
   // DEBUG-only properties
   private _trackedAsyncRequests: AsyncTrackingToken[];
   shouldAssertMethodCallsOnDestroyedStore: boolean = false;
@@ -274,8 +275,6 @@ class Store extends Service {
   constructor() {
     super(...arguments);
 
-    this._serializerCache = Object.create(null);
-    this._adapterCache = new AdapterCache(this);
     this._fetchManager = new FetchManager(this._adapterCache, this);
 
     if (DEBUG) {
@@ -953,11 +952,15 @@ class Store extends Service {
     return Promise.all(fetches);
   }
 
-  _scheduleFetchThroughFetchManager(internalModel, options = {}) {
+  _scheduleFetchThroughFetchManager(internalModel: InternalModel, options = {}): RSVP.Promise<InternalModel> {
     let generateStackTrace = this.generateStackTracesForTrackedRequests;
     let promise = this._fetchManager.scheduleFetch(identifierForIM(internalModel), options, generateStackTrace);
     return promise.then(
-      payload => this._push(payload),
+      payload => {
+        this._push(payload);
+        // Returning this._push here, breaks typing but not any tests, invesstigate potential missing tests
+        return internalModel;
+      },
       error => {
         if (internalModel.isEmpty()) {
           internalModel.unloadRecord();

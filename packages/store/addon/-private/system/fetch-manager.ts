@@ -209,7 +209,7 @@ export default class FetchManager {
     }
   }
 
-  scheduleFetch(identifier: RecordIdentifier, options: any, shouldTrace: boolean): Promise<any> {
+  scheduleFetch(identifier: RecordIdentifier, options: any, shouldTrace: boolean): RSVP.Promise<any> {
     // TODO Probably the store should pass in the query object
 
     let query: FindRecordQuery = {
@@ -222,13 +222,11 @@ export default class FetchManager {
       data: [query],
     };
 
+    let pendingFetches = this._pendingFetch.get(identifier.type);
+
     // We already have a pending fetch for this
-    if (
-      this._pendingFetch.has(identifier.type) &&
-      this._pendingFetch.get(identifier.type).find(fetch => fetch.identifier.id === identifier.id)
-    ) {
-      return this._pendingFetch.get(identifier.type).find(fetch => fetch.identifier.id === identifier.id).resolver
-        .promise;
+    if (pendingFetches && pendingFetches.find(fetch => fetch.identifier.id === identifier.id)) {
+      return pendingFetches.find(fetch => fetch.identifier.id === identifier.id).resolver.promise;
     }
     /*
     if (internalModel._promiseProxy) {
@@ -320,9 +318,7 @@ export default class FetchManager {
         );
 
         warn(
-          `You requested a record of type '${modelName}' with id '${id}' but the adapter returned a payload with primary data having an id of '${
-            payload.data.id
-          }'. Use 'store.findRecord()' when the requested id is the same as the one returned by the adapter. In other cases use 'store.queryRecord()' instead https://emberjs.com/api/data/classes/DS.Store.html#method_queryRecord`,
+          `You requested a record of type '${modelName}' with id '${id}' but the adapter returned a payload with primary data having an id of '${payload.data.id}'. Use 'store.findRecord()' when the requested id is the same as the one returned by the adapter. In other cases use 'store.queryRecord()' instead https://emberjs.com/api/data/classes/DS.Store.html#method_queryRecord`,
           coerceId(payload.data.id) === coerceId(id),
           {
             id: 'ds.store.findRecord.id-mismatch',
@@ -332,13 +328,6 @@ export default class FetchManager {
         return payload;
       },
       error => {
-        /*
-        internalModel.notFound();
-        if (internalModel.isEmpty()) {
-          internalModel.unloadRecord();
-        }
-        */
-
         throw error;
       },
       `DS: Extract payload of '${modelName}'`
@@ -401,9 +390,7 @@ export default class FetchManager {
         pair.resolver.reject(
           error ||
             new Error(
-              `Expected: '<${identifier.modelName}:${
-                identifier.id
-              }>' to be present in the adapter provided payload, but it was not found.`
+              `Expected: '<${identifier.modelName}:${identifier.id}>' to be present in the adapter provided payload, but it was not found.`
             )
         );
       }
