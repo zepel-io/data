@@ -4,6 +4,7 @@ import Model from 'ember-data/model';
 import Store from 'ember-data/store';
 import { module, test } from 'qunit';
 import { settled } from '@ember/test-helpers';
+import { identifierCacheFor } from '@ember-data/store/-private';
 import EmberObject from '@ember/object';
 import { attr, hasMany, belongsTo } from '@ember-data/model';
 
@@ -18,7 +19,7 @@ interface JsonApiValidationError {
   detail: string;
   source: {
     pointer: string;
-  }
+  };
 }
 
 class Person extends Model {
@@ -29,24 +30,24 @@ class Person extends Model {
   @attr('string', {})
   lastName;
 }
-module('integration/request-state-service - Request State Service', function (hooks) {
+module('integration/request-state-service - Request State Service', function(hooks) {
   setupTest(hooks);
 
   let store;
 
-  hooks.beforeEach(function () {
+  hooks.beforeEach(function() {
     let { owner } = this;
     owner.register('model:person', Person);
     store = owner.lookup('service:store');
   });
 
-  test("getPendingRequest and getLastRequest", async function (assert) {
+  test('getPendingRequest and getLastRequest', async function(assert) {
     assert.expect(10);
 
     const personHash = {
       type: 'person',
       id: '1',
-      name: 'Scumbag Dale'
+      name: 'Scumbag Dale',
     };
 
     let normalizedHash = {
@@ -56,9 +57,9 @@ module('integration/request-state-service - Request State Service', function (ho
         attributes: {
           name: 'Scumbag Dale',
         },
-        relationships: {}
+        relationships: {},
       },
-      included: []
+      included: [],
     };
 
     let { owner } = this;
@@ -77,7 +78,7 @@ module('integration/request-state-service - Request State Service', function (ho
 
       createRecord() {
         return Promise.resolve();
-      }
+      },
     });
 
     owner.register('adapter:application', TestAdapter, { singleton: false });
@@ -88,15 +89,15 @@ module('integration/request-state-service - Request State Service', function (ho
     let requestService = store.getRequestStateService();
 
     // Relying on sequential lids until identifiers land
-    let identifier = { type: 'person', id: '1', lid: '1' };
+    let identifier = identifierCacheFor(store).getOrCreateRecordIdentifier({ type: 'person', id: '1' });
     let request = requestService.getPendingRequestsForRecord(identifier)[0];
 
     assert.equal(request.state, 'pending', 'request is pending');
     assert.equal(request.type, 'query', 'request is a query');
     let requestOp = {
       op: 'findRecord',
-      recordIdentifier: { id: '1', type: 'person', lid: '1' },
-      options: {}
+      recordIdentifier: identifier,
+      options: {},
     };
     assert.deepEqual(request.request.data[0], requestOp, 'request op is correct');
 
@@ -106,7 +107,7 @@ module('integration/request-state-service - Request State Service', function (ho
       type: 'query',
       state: 'fulfilled',
       request: { data: [requestOp] },
-      response: { data: normalizedHash }
+      response: { data: normalizedHash },
     };
     assert.deepEqual(lastRequest, requestStateResult, 'request is correct after fulfilling');
     assert.deepEqual(requestService.getPendingRequestsForRecord(identifier).length, 0, 'no pending requests remaining');
@@ -118,8 +119,8 @@ module('integration/request-state-service - Request State Service', function (ho
     assert.equal(savingRequest.type, 'mutation', 'request is a mutation');
     let savingRequestOp = {
       op: 'saveRecord',
-      recordIdentifier: { id: '1', type: 'person', lid: '1' },
-      options: {}
+      recordIdentifier: identifier,
+      options: {},
     };
     assert.deepEqual(savingRequest.request.data[0], savingRequestOp, 'request op is correct');
 
@@ -129,19 +130,19 @@ module('integration/request-state-service - Request State Service', function (ho
       type: 'mutation',
       state: 'fulfilled',
       request: { data: [savingRequestOp] },
-      response: { data: undefined }
+      response: { data: undefined },
     };
     assert.deepEqual(lastSavingRequest, savingRequestStateResult, 'request is correct after fulfilling');
     assert.deepEqual(requestService.getPendingRequestsForRecord(identifier).length, 0, 'no pending requests remaining');
   });
 
-  test("event subscription", async function (assert) {
-    assert.expect(10);
+  test('event subscription', async function(assert) {
+    assert.expect(9);
 
     const personHash = {
       type: 'person',
       id: '1',
-      name: 'Scumbag Dale'
+      name: 'Scumbag Dale',
     };
 
     let normalizedHash = {
@@ -151,9 +152,9 @@ module('integration/request-state-service - Request State Service', function (ho
         attributes: {
           name: 'Scumbag Dale',
         },
-        relationships: {}
+        relationships: {},
       },
-      included: []
+      included: [],
     };
 
     let { owner } = this;
@@ -172,7 +173,7 @@ module('integration/request-state-service - Request State Service', function (ho
 
       createRecord() {
         return Promise.resolve();
-      }
+      },
     });
 
     owner.register('adapter:application', TestAdapter, { singleton: false });
@@ -181,20 +182,20 @@ module('integration/request-state-service - Request State Service', function (ho
 
     let requestService = store.getRequestStateService();
     // Relying on sequential lids until identifiers land
-    let identifier = { type: 'person', id: '1', lid: '1' };
+    let identifier = identifierCacheFor(store).getOrCreateRecordIdentifier({ type: 'person', id: '1' });
     let count = 0;
     let requestOp = {
       op: 'findRecord',
-      recordIdentifier: { id: '1', type: 'person', lid: '1' },
-      options: {}
+      recordIdentifier: identifier,
+      options: {},
     };
     let savingRequestOp = {
       op: 'saveRecord',
-      recordIdentifier: { id: '1', type: 'person', lid: '1' },
-      options: {}
+      recordIdentifier: identifier,
+      options: {},
     };
 
-    let unsubToken = requestService.subscribeForRecord(identifier, (request) => {
+    let unsubToken = requestService.subscribeForRecord(identifier, request => {
       if (count === 0) {
         assert.equal(request.state, 'pending', 'request is pending');
         assert.equal(request.type, 'query', 'request is a query');
@@ -204,7 +205,7 @@ module('integration/request-state-service - Request State Service', function (ho
           type: 'query',
           state: 'fulfilled',
           request: { data: [requestOp] },
-          response: { data: normalizedHash }
+          response: { data: normalizedHash },
         };
         assert.deepEqual(request, requestStateResult, 'request is correct after fulfilling');
       } else if (count === 2) {
@@ -216,11 +217,11 @@ module('integration/request-state-service - Request State Service', function (ho
           type: 'mutation',
           state: 'fulfilled',
           request: { data: [savingRequestOp] },
-          response: { data: undefined }
+          response: { data: undefined },
         };
         assert.deepEqual(request, savingRequestStateResult, 'request is correct after fulfilling');
       }
-      count++
+      count++;
     });
 
     let person = await store.findRecord('person', '1');

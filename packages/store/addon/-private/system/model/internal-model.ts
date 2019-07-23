@@ -132,7 +132,7 @@ export default class InternalModel {
   currentState: any;
   error: any;
 
-  constructor(public store: Store, private identifier: RecordIdentifier) {
+  constructor(public store: Store, public identifier: RecordIdentifier) {
     this.id = identifier.id;
     this.modelName = identifier.type;
     this.clientId = identifier.lid;
@@ -770,9 +770,7 @@ export default class InternalModel {
       return this._updatePromiseProxyFor('hasMany', key, { promise, content: manyArray });
     } else {
       assert(
-        `You looked up the '${key}' relationship on a '${this.type.modelName}' with id ${
-          this.id
-        } but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async ('DS.hasMany({ async: true })')`,
+        `You looked up the '${key}' relationship on a '${this.type.modelName}' with id ${this.id} but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async ('DS.hasMany({ async: true })')`,
         !manyArray.anyUnloaded()
       );
 
