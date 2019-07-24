@@ -24,7 +24,7 @@ import RecordData from '../../ts-interfaces/record-data';
 import { JsonApiResource, JsonApiValidationError } from '../../ts-interfaces/record-data-json-api';
 import { Record } from '../../ts-interfaces/record';
 import { Dict } from '../../ts-interfaces/utils';
-import { IDENTIFIERS, RECORD_DATA_ERRORS, RECORD_DATA_STATE } from '@ember-data/canary-features';
+import { IDENTIFIERS, RECORD_DATA_ERRORS, RECORD_DATA_STATE, REQUEST_SERVICE } from '@ember-data/canary-features';
 import { identifierCacheFor } from '../../identifiers/cache';
 import { RecordIdentifier } from '../../ts-interfaces/identifier';
 import { internalModelFactoryFor } from '../store/internal-model-factory';
@@ -505,7 +505,7 @@ export default class InternalModel {
   }
 
   reload(options) {
-    if (true) {
+    if (REQUEST_SERVICE) {
       if (!options) {
         options = {};
       }

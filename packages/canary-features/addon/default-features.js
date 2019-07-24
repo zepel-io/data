@@ -13,4 +13,5 @@ export default {
   RECORD_DATA_ERRORS: null,
   RECORD_DATA_STATE: null,
   IDENTIFIERS: null,
+  REQUEST_SERVICE: null,
 };

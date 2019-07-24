@@ -39,7 +39,7 @@ import RecordArrayManager from './record-array-manager';
 import InternalModel from './model/internal-model';
 import RecordDataDefault from './model/record-data';
 import edBackburner from './backburner';
-import { IDENTIFIERS, RECORD_DATA_ERRORS, RECORD_DATA_STATE } from '@ember-data/canary-features';
+import { IDENTIFIERS, RECORD_DATA_ERRORS, RECORD_DATA_STATE, REQUEST_SERVICE } from '@ember-data/canary-features';
 import { Record } from '../ts-interfaces/record';
 
 import promiseRecord from '../utils/promise-record';
@@ -971,70 +971,72 @@ class Store extends Service {
   }
 
   _scheduleFetch(internalModel: InternalModel, options): RSVP.Promise<InternalModel> {
-    if (true) {
+    if (REQUEST_SERVICE) {
       return this._scheduleFetchThroughFetchManager(internalModel, options);
-    }
-    if (internalModel._promiseProxy) {
-      return internalModel._promiseProxy;
-    }
-
-    let { id, modelName } = internalModel;
-    let resolver = defer<InternalModel>(`Fetching ${modelName}' with id: ${id}`);
-    let pendingFetchItem: PendingFetchItem = {
-      internalModel,
-      resolver,
-      options,
-    };
-
-    if (DEBUG) {
-      if (this.generateStackTracesForTrackedRequests === true) {
-        let trace;
-
-        try {
-          throw new Error(`Trace Origin for scheduled fetch for ${modelName}:${id}.`);
-        } catch (e) {
-          trace = e;
-        }
-
-        // enable folks to discover the origin of this findRecord call when
-        // debugging. Ideally we would have a tracked queue for requests with
-        // labels or local IDs that could be used to merge this trace with
-        // the trace made available when we detect an async leak
-        pendingFetchItem.trace = trace;
+    } else {
+      if (internalModel._promiseProxy) {
+        return internalModel._promiseProxy;
       }
+
+      let { id, modelName } = internalModel;
+      let resolver = defer<InternalModel>(`Fetching ${modelName}' with id: ${id}`);
+      let pendingFetchItem: PendingFetchItem = {
+        internalModel,
+        resolver,
+        options,
+      };
+
+      if (DEBUG) {
+        if (this.generateStackTracesForTrackedRequests === true) {
+          let trace;
+
+          try {
+            throw new Error(`Trace Origin for scheduled fetch for ${modelName}:${id}.`);
+          } catch (e) {
+            trace = e;
+          }
+
+          // enable folks to discover the origin of this findRecord call when
+          // debugging. Ideally we would have a tracked queue for requests with
+          // labels or local IDs that could be used to merge this trace with
+          // the trace made available when we detect an async leak
+          pendingFetchItem.trace = trace;
+        }
+      }
+
+      let promise = resolver.promise;
+
+      internalModel.loadingData(promise);
+      if (this._pendingFetch.size === 0) {
+        emberRun.schedule('actions', this, this.flushAllPendingFetches);
+      }
+
+      let fetches = this._pendingFetch;
+      let pending = fetches.get(modelName);
+
+      if (pending === undefined) {
+        pending = [];
+        fetches.set(modelName, pending);
+      }
+
+      pending.push(pendingFetchItem);
+
+      return promise;
     }
-
-    let promise = resolver.promise;
-
-    internalModel.loadingData(promise);
-    if (this._pendingFetch.size === 0) {
-      emberRun.schedule('actions', this, this.flushAllPendingFetches);
-    }
-
-    let fetches = this._pendingFetch;
-    let pending = fetches.get(modelName);
-
-    if (pending === undefined) {
-      pending = [];
-      fetches.set(modelName, pending);
-    }
-
-    pending.push(pendingFetchItem);
-
-    return promise;
   }
 
   flushAllPendingFetches() {
-    if (true) {
+    if (REQUEST_SERVICE) {
       return;
       //assert here
-    }
-    if (this.isDestroyed || this.isDestroying) {
-      return;
-    }
+    } else {
+      if (this.isDestroyed || this.isDestroying) {
+        return;
+      }
 
-    this._pendingFetch.forEach(this._flushPendingFetchForType, this);
-    this._pendingFetch.clear();
+      this._pendingFetch.forEach(this._flushPendingFetchForType, this);
+      this._pendingFetch.clear();
+    }
   }
 
   _flushPendingFetchForType(pendingFetchItems: PendingFetchItem[], modelName: string) {
@@ -1290,7 +1292,7 @@ class Store extends Service {
     @return {Promise} promise
   */
   _reloadRecord(internalModel, options): RSVP.Promise<InternalModel> {
-    if (true) {
+    if (REQUEST_SERVICE) {
       options.isReloading = true;
     }
     let { id, modelName } = internalModel;
@@ -1563,7 +1565,7 @@ class Store extends Service {
 
     if (internalModel) {
       // short circuit if we are already loading
-      if (true) {
+      if (REQUEST_SERVICE) {
         // Temporary fix for requests already loading until we move this inside the fetch manager
         let pendingRequests = this.getRequestStateService()
           .getPendingRequestsForRecord(identifierForIM(internalModel))
@@ -2200,7 +2202,7 @@ class Store extends Service {
     }
 
     internalModel.adapterWillCommit();
-    if (true) {
+    if (REQUEST_SERVICE) {
       let promise = this._fetchManager.scheduleSave(identifierForIM(internalModel), options);
       promise = promise.then(
         payload => {
@@ -2245,7 +2247,8 @@ class Store extends Service {
     @private
   */
   flushPendingSave() {
-    if (true) {
+    if (REQUEST_SERVICE) {
+      // assert here
       return;
     }
     let pending = this._pendingSave.slice();

@@ -17,7 +17,7 @@ import recordDataFor from '../record-data-for';
 import Ember from 'ember';
 import InternalModel from './internal-model';
 import RootState from './states';
-import { RECORD_DATA_ERRORS, RECORD_DATA_STATE } from '@ember-data/canary-features';
+import { RECORD_DATA_ERRORS, RECORD_DATA_STATE, REQUEST_SERVICE } from '@ember-data/canary-features';
 import coerceId from '../coerce-id';
 import { identifierForModel } from '../record-identifier';
 import { InvalidError } from '@ember-data/adapter/error';
@@ -857,7 +857,7 @@ const Model = EmberObject.extend(DeprecatedEvented, {
     if (RECORD_DATA_ERRORS) {
       this._markInvalidRequestAsClean();
     }
-    if (true) {
+    if (REQUEST_SERVICE) {
       this._markErrorRequestAsClean();
     }
   },
@@ -1593,11 +1593,7 @@ Model.reopenClass({
     }
 
     assert(
-      `The ${
-        inverseType.modelName
-      }:${inverseName} relationship declares 'inverse: null', but it was resolved as the inverse for ${
-        this.modelName
-      }:${name}.`,
+      `The ${inverseType.modelName}:${inverseName} relationship declares 'inverse: null', but it was resolved as the inverse for ${this.modelName}:${name}.`,
       !inverseOptions || inverseOptions.inverse !== null
     );
 

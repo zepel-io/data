@@ -10,6 +10,7 @@ import { _bind, _guard, _objectIsAlive, guardDestroyedStore } from './common';
 import { normalizeResponseHelper } from './serializer-response';
 import { serializerForAdapter } from './serializers';
 import { assign } from '@ember/polyfills';
+import { REQUEST_SERVICE } from '@ember-data/canary-features';
 
 function payloadIsNotBlank(adapterPayload) {
   if (Array.isArray(adapterPayload)) {
@@ -20,8 +21,8 @@ function payloadIsNotBlank(adapterPayload) {
 }
 
 export function _find(adapter, store, modelClass, id, internalModel, options) {
-  if (true) {
-    //assert
+  if (REQUEST_SERVICE) {
+    // assert here
   }
   let snapshot = internalModel.createSnapshot(options);
   let { modelName } = internalModel;
