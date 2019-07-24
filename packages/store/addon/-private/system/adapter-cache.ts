@@ -8,7 +8,9 @@ import Store from './store';
 type Adapter = object; // for now, will get more specific later
 
 export class AdapterCache {
-  _adapterCache: { [s: string]: Adapter | undefined };
+  _adapterCache: {
+    [s: string]: Adapter | undefined;
+  };
   _store: Store;
 
   constructor(store: Store) {

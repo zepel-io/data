@@ -2193,17 +2193,21 @@ class Store extends Service {
     @param {Resolver} resolver
     @param {Object} options
   */
-  scheduleSave(internalModel: InternalModel, resolver: RSVP.Deferred<InternalModel>, options) {
+  scheduleSave(
+    internalModel: InternalModel,
+    resolver: RSVP.Deferred<InternalModel | void>,
+    options
+  ): void | RSVP.Promise<void> {
     let snapshot = internalModel.createSnapshot(options);
     if (internalModel._isRecordFullyDeleted()) {
       resolver.resolve();
-      return resolver.promise;
+      return resolver.promise as RSVP.Promise<void>;
     }
 
     internalModel.adapterWillCommit();
     if (REQUEST_SERVICE) {
-      let promise = this._fetchManager.scheduleSave(identifierForIM(internalModel), options);
-      promise = promise.then(
+      let fetchManagerPromise = this._fetchManager.scheduleSave(identifierForIM(internalModel), options);
+      let promise = fetchManagerPromise.then(
         payload => {
           /*
         Note to future spelunkers hoping to optimize.
@@ -2995,6 +2999,7 @@ class Store extends Service {
     @return Adapter
   */
   adapterFor(modelName) {
+    debugger;
     if (DEBUG) {
       assertDestroyingStore(this, 'adapterFor');
     }
@@ -3145,8 +3150,9 @@ class Store extends Service {
     super.willDestroy();
     this.recordArrayManager.destroy();
 
-    this._adapterCache = null;
-    this._serializerCache = null;
+    // Check if we need to null this out
+    // this._adapterCache = null;
+    // this._serializerCache = null;
 
     this.unloadAll();
 

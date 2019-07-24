@@ -17,7 +17,7 @@ import { _findHasMany, _findBelongsTo, _findAll, _query, _queryRecord } from './
 import RequestCache from './request-cache';
 import { RecordData, RelationshipRecordData } from './model/record-data';
 import { InternalModel } from '..';
-import { CollectionResourceDocument } from '../ts-interfaces/ember-data-json-api';
+import { CollectionResourceDocument, SingleResourceDocument } from '../ts-interfaces/ember-data-json-api';
 
 function payloadIsNotBlank(adapterPayload): boolean {
   if (Array.isArray(adapterPayload)) {
@@ -74,7 +74,7 @@ export interface RequestState {
 }
 
 export interface Response {
-  rawData: unknown;
+  // rawData: unknown;
   data: unknown;
 }
 
@@ -102,9 +102,9 @@ export default class FetchManager {
 
     It schedules saving to happen at the end of the run loop.
  */
-  scheduleSave(identifier: RecordIdentifier, options: any = {}) {
+  scheduleSave(identifier: RecordIdentifier, options: any = {}): RSVP.Promise<null | SingleResourceDocument> {
     let promiseLabel = 'DS: Model#save ' + this;
-    let resolver = RSVP.defer(promiseLabel);
+    let resolver = RSVP.defer<null | SingleResourceDocument>(promiseLabel);
     let query: SaveRecordMutation = {
       op: 'saveRecord',
       recordIdentifier: identifier,
