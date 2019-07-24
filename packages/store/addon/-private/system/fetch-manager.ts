@@ -203,7 +203,7 @@ export default class FetchManager {
   _flushPendingSaves() {
     let pending = this._pendingSave.slice();
     this._pendingSave = [];
-    for (var i = 0, j = pending.length; i < j; i++) {
+    for (let i = 0, j = pending.length; i < j; i++) {
       let pendingItem = pending[i];
       this._flushPendingSave(pendingItem);
     }
@@ -443,7 +443,7 @@ export default class FetchManager {
     let ids = new Array(totalInGroup);
     let groupedIdentifiers = new Array(totalInGroup);
 
-    for (var j = 0; j < totalInGroup; j++) {
+    for (let j = 0; j < totalInGroup; j++) {
       groupedIdentifiers[j] = group[j];
       ids[j] = groupedIdentifiers[j].id;
     }
@@ -458,7 +458,7 @@ export default class FetchManager {
           this.rejectInternalModels(seeking, groupedIdentifiers, error);
         });
     } else if (ids.length === 1) {
-      var pair = seeking[groupedIdentifiers[0].id];
+      let pair = seeking[groupedIdentifiers[0].id];
       this._fetchRecord(pair);
     } else {
       assert("You cannot return an empty array from adapter's method groupRecordsForFindMany", false);
@@ -494,7 +494,7 @@ export default class FetchManager {
       // But since the _findMany() finder is a store method we need to get the
       // records from the grouped snapshots even though the _findMany() finder
       // will once again convert the records to snapshots for adapter.findMany()
-      let snapshots = new Array(totalItems);
+      let snapshots = new Array<Snapshot>(totalItems);
       for (let i = 0; i < totalItems; i++) {
         let options = optionsMap.get(identifiers[i]);
         snapshots[i] = new Snapshot(options, identifiers[i], this._store);
@@ -502,7 +502,7 @@ export default class FetchManager {
 
       let groups: Snapshot[][] = adapter.groupRecordsForFindMany(this, snapshots);
 
-      for (var i = 0, l = groups.length; i < l; i++) {
+      for (let i = 0, l = groups.length; i < l; i++) {
         this._processCoalescedGroup(seeking, groups[i], adapter, optionsMap, modelName);
       }
     } else {

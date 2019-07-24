@@ -8,20 +8,6 @@ import { identifierCacheFor } from '@ember-data/store/-private';
 import EmberObject from '@ember/object';
 import { attr, hasMany, belongsTo } from '@ember-data/model';
 
-interface RecordIdentifier {
-  id?: string;
-  type: string;
-  lid: string;
-}
-
-interface JsonApiValidationError {
-  title: string;
-  detail: string;
-  source: {
-    pointer: string;
-  };
-}
-
 class Person extends Model {
   // TODO fix the typing for naked attrs
   @attr('string', {})
@@ -33,7 +19,7 @@ class Person extends Model {
 module('integration/request-state-service - Request State Service', function(hooks) {
   setupTest(hooks);
 
-  let store;
+  let store: Store;
 
   hooks.beforeEach(function() {
     let { owner } = this;
