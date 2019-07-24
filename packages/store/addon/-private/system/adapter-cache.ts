@@ -3,14 +3,15 @@ import { assert } from '@ember/debug';
 import { getOwner } from '@ember/application';
 import { isPresent } from '@ember/utils';
 import { set } from '@ember/object';
+import Store from './store';
 
 type Adapter = object; // for now, will get more specific later
 
 export class AdapterCache {
   _adapterCache: { [s: string]: Adapter | undefined };
-  _store: any;
+  _store: Store;
 
-  constructor(store: any) {
+  constructor(store: Store) {
     this._adapterCache = Object.create(null);
     this._store = store;
   }

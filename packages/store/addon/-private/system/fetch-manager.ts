@@ -16,12 +16,14 @@ import Ember from 'ember';
 import { _findHasMany, _findBelongsTo, _findAll, _query, _queryRecord } from './store/finders';
 import RequestCache from './request-cache';
 import { RecordData, RelationshipRecordData } from './model/record-data';
+import { InternalModel } from '..';
+import { CollectionResourceDocument } from '../ts-interfaces/ember-data-json-api';
 
-function payloadIsNotBlank(adapterPayload) {
+function payloadIsNotBlank(adapterPayload): boolean {
   if (Array.isArray(adapterPayload)) {
     return true;
   } else {
-    return Object.keys(adapterPayload || {}).length;
+    return Object.keys(adapterPayload || {}).length !== 0;
   }
 }
 
@@ -99,13 +101,7 @@ export default class FetchManager {
     resolver for the promise that `record.save` returns.
 
     It schedules saving to happen at the end of the run loop.
-
-    @method scheduleSave
-    @private
-    @param {InternalModel} internalModel
-    @param {Resolver} resolver
-    @param {Object} options
-  */
+ */
   scheduleSave(identifier: RecordIdentifier, options: any = {}) {
     let promiseLabel = 'DS: Model#save ' + this;
     let resolver = RSVP.defer(promiseLabel);
@@ -225,14 +221,12 @@ export default class FetchManager {
     let pendingFetches = this._pendingFetch.get(identifier.type);
 
     // We already have a pending fetch for this
-    if (pendingFetches && pendingFetches.find(fetch => fetch.identifier.id === identifier.id)) {
-      return pendingFetches.find(fetch => fetch.identifier.id === identifier.id).resolver.promise;
+    if (pendingFetches) {
+      let matchingPendingFetch = pendingFetches.find(fetch => fetch.identifier.id === identifier.id);
+      if (matchingPendingFetch) {
+        return matchingPendingFetch.resolver.promise;
+      }
     }
-    /*
-    if (internalModel._promiseProxy) {
-        return internalModel._promiseProxy;
-    }
-    */
 
     let id = identifier.id;
     let modelName = identifier.type;
@@ -336,7 +330,12 @@ export default class FetchManager {
     fetchItem.resolver.resolve(promise);
   }
 
-  handleFoundRecords(seeking: { [id: string]: PendingFetchItem }, coalescedPayload, expectedInternalModels) {
+  // TODO should probably refactor expectedSnapshots to be identifiers
+  handleFoundRecords(
+    seeking: { [id: string]: PendingFetchItem },
+    coalescedPayload: CollectionResourceDocument,
+    expectedSnapshots: Snapshot[]
+  ) {
     // resolve found records
     let found = Object.create(null);
     let payloads = coalescedPayload.data;
@@ -357,31 +356,32 @@ export default class FetchManager {
     // reject missing records
 
     // TODO NOW clean this up to refer to payloads
-    let missingInternalModels: any = [];
+    let missingSnapshots: Snapshot[] = [];
+    debugger;
 
-    for (let i = 0, l = expectedInternalModels.length; i < l; i++) {
-      let internalModel = expectedInternalModels[i];
+    for (let i = 0, l = expectedSnapshots.length; i < l; i++) {
+      let snapshot = expectedSnapshots[i];
 
-      if (!found[internalModel.id]) {
-        missingInternalModels.push(internalModel);
+      if (!found[snapshot.id]) {
+        missingSnapshots.push(snapshot);
       }
     }
 
-    if (missingInternalModels.length) {
+    if (missingSnapshots.length) {
       warn(
         'Ember Data expected to find records with the following ids in the adapter response but they were missing: [ "' +
-          missingInternalModels.map(r => r.id).join('", "') +
+          missingSnapshots.map(r => r.id).join('", "') +
           '" ]',
         false,
         {
           id: 'ds.store.missing-records-from-adapter',
         }
       );
-      this.rejectInternalModels(seeking, missingInternalModels);
+      this.rejectInternalModels(seeking, missingSnapshots);
     }
   }
 
-  rejectInternalModels(seeking: { [id: string]: PendingFetchItem }, identifiers: RecordIdentifier[], error?) {
+  rejectInternalModels(seeking: { [id: string]: PendingFetchItem }, identifiers: Snapshot[], error?) {
     for (let i = 0, l = identifiers.length; i < l; i++) {
       let identifier = identifiers[i];
       let pair = seeking[identifier.id];

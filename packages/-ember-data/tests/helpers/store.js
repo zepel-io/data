@@ -11,9 +11,6 @@ import RESTSerializer from '@ember-data/serializer/rest';
 import JSONSerializer from '@ember-data/serializer/json';
 import config from '../../config/environment';
 import Resolver from '../../resolver';
-import FetchManager from './fetch-manager';
-import { AdapterCache } from './adapter-cache';
-import { identifierForIM, RecordIdentifier } from './record-identifier';
 
 const { _RegistryProxyMixin, _ContainerProxyMixin, Registry } = Ember;
 
