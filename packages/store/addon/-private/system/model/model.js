@@ -123,24 +123,26 @@ const Model = EmberObject.extend(DeprecatedEvented, {
       this._invalidRequests = [];
     }
 
-    this.store.getRequestStateService().subscribeForRecord(identifierForModel(this), request => {
-      if (request.state === 'rejected') {
-        // TODO filter out queries
-        this._lastError = request;
-        if (!(request.response && request.response.data instanceof InvalidError)) {
-          this._errorRequests.push(request);
-        } else {
-          this._invalidRequests.push(request);
+    if (REQUEST_SERVICE) {
+      this.store.getRequestStateService().subscribeForRecord(identifierForModel(this), request => {
+        if (request.state === 'rejected') {
+          // TODO filter out queries
+          this._lastError = request;
+          if (!(request.response && request.response.data instanceof InvalidError)) {
+            this._errorRequests.push(request);
+          } else {
+            this._invalidRequests.push(request);
+          }
+        } else if (request.state === 'fulfilled') {
+          this._invalidRequests = [];
+          this._errorRequests = [];
+          this._lastError = null;
         }
-      } else if (request.state === 'fulfilled') {
-        this._invalidRequests = [];
-        this._errorRequests = [];
-        this._lastError = null;
-      }
-      this._notifyNetworkChanges();
-    });
-    this._errorRequests = [];
-    this._lastError = null;
+        this._notifyNetworkChanges();
+      });
+      this._errorRequests = [];
+      this._lastError = null;
+    }
   },
 
   _notifyNetworkChanges: function() {

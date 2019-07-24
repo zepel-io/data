@@ -476,8 +476,12 @@ export default class InternalModel {
     let promiseLabel = 'DS: Model#save ' + this;
     let resolver = RSVP.defer<InternalModel>(promiseLabel);
 
-    return this.store.scheduleSave(this, resolver, options);
-    // return resolver.promise;
+    if (REQUEST_SERVICE) {
+      return this.store.scheduleSave(this, resolver, options);
+    } else {
+      this.store.scheduleSave(this, resolver, options);
+      return resolver.promise;
+    }
   }
 
   startedReloading() {

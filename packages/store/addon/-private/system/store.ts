@@ -929,7 +929,6 @@ class Store extends Service {
     @return {Promise} promise
    */
   _fetchRecord(internalModel: InternalModel, options): Promise<InternalModel> {
-    debugger;
     let modelName = internalModel.modelName;
     let adapter = this.adapterFor(modelName);
 
