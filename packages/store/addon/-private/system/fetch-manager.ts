@@ -357,7 +357,6 @@ export default class FetchManager {
 
     // TODO NOW clean this up to refer to payloads
     let missingSnapshots: Snapshot[] = [];
-    debugger;
 
     for (let i = 0, l = expectedSnapshots.length; i < l; i++) {
       let snapshot = expectedSnapshots[i];
@@ -381,9 +380,9 @@ export default class FetchManager {
     }
   }
 
-  rejectInternalModels(seeking: { [id: string]: PendingFetchItem }, identifiers: Snapshot[], error?) {
-    for (let i = 0, l = identifiers.length; i < l; i++) {
-      let identifier = identifiers[i];
+  rejectInternalModels(seeking: { [id: string]: PendingFetchItem }, snapshots: Snapshot[], error?) {
+    for (let i = 0, l = snapshots.length; i < l; i++) {
+      let identifier = snapshots[i];
       let pair = seeking[identifier.id];
 
       if (pair) {
@@ -441,24 +440,24 @@ export default class FetchManager {
     //TOD check what happened with identifiers here
     let totalInGroup = group.length;
     let ids = new Array(totalInGroup);
-    let groupedIdentifiers = new Array(totalInGroup);
+    let groupedSnapshots = new Array(totalInGroup);
 
     for (let j = 0; j < totalInGroup; j++) {
-      groupedIdentifiers[j] = group[j];
-      ids[j] = groupedIdentifiers[j].id;
+      groupedSnapshots[j] = group[j];
+      ids[j] = groupedSnapshots[j].id;
     }
 
     let store = this._store;
     if (totalInGroup > 1) {
-      this._findMany(adapter, store, modelName, group, groupedIdentifiers, optionsMap)
+      this._findMany(adapter, store, modelName, group, groupedSnapshots, optionsMap)
         .then(payloads => {
-          this.handleFoundRecords(seeking, payloads, groupedIdentifiers);
+          this.handleFoundRecords(seeking, payloads, groupedSnapshots);
         })
         .catch(error => {
-          this.rejectInternalModels(seeking, groupedIdentifiers, error);
+          this.rejectInternalModels(seeking, groupedSnapshots, error);
         });
     } else if (ids.length === 1) {
-      let pair = seeking[groupedIdentifiers[0].id];
+      let pair = seeking[groupedSnapshots[0].id];
       this._fetchRecord(pair);
     } else {
       assert("You cannot return an empty array from adapter's method groupRecordsForFindMany", false);

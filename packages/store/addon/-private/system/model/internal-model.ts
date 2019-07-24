@@ -333,9 +333,12 @@ export default class InternalModel {
         store,
         _internalModel: this,
         currentState: this.currentState,
-        // isError: this.isError,
-        // adapterError: this.error,
       };
+
+      if (!REQUEST_SERVICE) {
+        createOptions.isError = this.isError;
+        createOptions.adapterError = this.error;
+      }
 
       if (properties !== undefined) {
         assert(
@@ -533,29 +536,30 @@ export default class InternalModel {
           internalModel.finishedReloading();
           internalModel.updateRecordArrays();
         });
-    }
-    this.startedReloading();
-    let internalModel = this;
-    let promiseLabel = 'DS: Model#reload of ' + this;
+    } else {
+      this.startedReloading();
+      let internalModel = this;
+      let promiseLabel = 'DS: Model#reload of ' + this;
 
-    return new Promise(function(resolve) {
-      internalModel.send('reloadRecord', { resolve, options });
-    }, promiseLabel)
-      .then(
-        function() {
-          internalModel.didCleanError();
-          return internalModel;
-        },
-        function(error) {
-          internalModel.didError(error);
-          throw error;
-        },
-        'DS: Model#reload complete, update flags'
-      )
-      .finally(function() {
-        internalModel.finishedReloading();
-        internalModel.updateRecordArrays();
-      });
+      return new Promise(function(resolve) {
+        internalModel.send('reloadRecord', { resolve, options });
+      }, promiseLabel)
+        .then(
+          function() {
+            internalModel.didCleanError();
+            return internalModel;
+          },
+          function(error) {
+            internalModel.didError(error);
+            throw error;
+          },
+          'DS: Model#reload complete, update flags'
+        )
+        .finally(function() {
+          internalModel.finishedReloading();
+          internalModel.updateRecordArrays();
+        });
+    }
   }
 
   /*
@@ -1305,26 +1309,30 @@ export default class InternalModel {
   }
 
   didError(error) {
-    this.error = error;
-    this.isError = true;
+    if (!REQUEST_SERVICE) {
+      this.error = error;
+      this.isError = true;
 
-    if (this.hasRecord) {
-      this._record.setProperties({
-        isError: true,
-        adapterError: error,
-      });
+      if (this.hasRecord) {
+        this._record.setProperties({
+          isError: true,
+          adapterError: error,
+        });
+      }
     }
   }
 
   didCleanError() {
-    this.error = null;
-    this.isError = false;
+    if (!REQUEST_SERVICE) {
+      this.error = null;
+      this.isError = false;
 
-    if (this.hasRecord) {
-      this._record.setProperties({
-        isError: false,
-        adapterError: null,
-      });
+      if (this.hasRecord) {
+        this._record.setProperties({
+          isError: false,
+          adapterError: null,
+        });
+      }
     }
   }
 
@@ -1387,7 +1395,6 @@ export default class InternalModel {
       let attribute;
       if (error && parsedErrors) {
         if (!this._recordData.getErrors) {
-          // TODO this seems wrong
           for (attribute in parsedErrors) {
             if (parsedErrors.hasOwnProperty(attribute)) {
               this.addErrorMessageToAttribute(attribute, parsedErrors[attribute]);
