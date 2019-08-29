@@ -37,6 +37,7 @@ if (IDENTIFIERS) {
 
       owner.register('model:user', User);
       owner.register('service:store', Store);
+      owner.register('adapter:application', Adapter.extend());
 
       store = owner.lookup('service:store');
 

@@ -3,6 +3,7 @@ import { setupTest } from 'ember-qunit';
 import { IDENTIFIERS } from '@ember-data/canary-features';
 import Store, { recordIdentifierFor } from '@ember-data/store';
 import Model, { attr } from '@ember-data/model';
+import Adapter from '@ember-data/adapter';
 
 module('Integration | Identifiers - creating new records', function(hooks) {
   setupTest(hooks);
@@ -17,6 +18,7 @@ module('Integration | Identifiers - creating new records', function(hooks) {
     }
 
     owner.register('model:user', User);
+    owner.register('adapter:application', Adapter.extend());
     store = owner.lookup('service:store');
   });
 

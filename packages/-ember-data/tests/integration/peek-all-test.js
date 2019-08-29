@@ -4,6 +4,7 @@ import Model from '@ember-data/model';
 import { module, test } from 'qunit';
 import { settled } from '@ember/test-helpers';
 import { attr } from '@ember-data/model';
+import Adapter from '@ember-data/adapter';
 
 class Person extends Model {
   @attr()
@@ -19,6 +20,7 @@ module('integration/peek-all - DS.Store#peekAll()', function(hooks) {
     let { owner } = this;
 
     owner.register('model:person', Person);
+    owner.register('adapter:application', Adapter.extend());
     store = owner.lookup('service:store');
   });
 

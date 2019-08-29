@@ -4,6 +4,7 @@ import { setupTest } from 'ember-qunit';
 import { module, test } from 'qunit';
 import { get } from '@ember/object';
 import { watchProperties } from '../../helpers/watch-property';
+import Adapter from '@ember-data/adapter';
 
 let store;
 
@@ -19,6 +20,7 @@ module('integration/peeked-records', function(hooks) {
 
   hooks.beforeEach(function() {
     this.owner.register('model:person', Person);
+    this.owner.register('adapter:application', Adapter.extend());
     store = this.owner.lookup('service:store');
   });
 

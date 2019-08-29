@@ -5,6 +5,7 @@ import Store from 'ember-data/store';
 import { module, test } from 'qunit';
 import { settled } from '@ember/test-helpers';
 import publicProps from '../../helpers/public-props';
+import JSONAPIAdapter from '@ember-data/adapter/json-api';
 import { attr, hasMany, belongsTo } from '@ember-data/model';
 
 class Person extends Model {
@@ -119,6 +120,7 @@ module('integration/store-wrapper - RecordData StoreWrapper tests', function(hoo
     owner.register('model:house', House);
     owner.register('model:car', Car);
     owner.register('service:store', CustomStore);
+    owner.register('adapter:application', JSONAPIAdapter.extend());
   });
 
   test('Relationship definitions', async function(assert) {

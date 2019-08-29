@@ -15,6 +15,7 @@ if (IDENTIFIERS) {
     hooks.beforeEach(function() {
       const { owner } = this;
       owner.register(`service:store`, Store);
+      owner.register('adapter:application', Adapter.extend());
 
       class User extends Model {
         @attr() name;
