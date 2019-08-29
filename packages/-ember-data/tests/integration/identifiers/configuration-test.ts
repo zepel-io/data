@@ -11,6 +11,8 @@ import Store, {
 import Model, { attr, belongsTo } from '@ember-data/model';
 import Adapter from '@ember-data/adapter';
 import Serializer from '@ember-data/serializer';
+import JSONAPIAdapter from '@ember-data/adapter/json-api';
+import JSONAPISerializer from '@ember-data/serializer/json-api';
 import { resolve, all } from 'rsvp';
 import { ExistingResourceObject } from '@ember-data/store/-private/ts-interfaces/ember-data-json-api';
 import { StableRecordIdentifier } from '@ember-data/store/-private/ts-interfaces/identifier';
@@ -384,6 +386,8 @@ if (IDENTIFIERS) {
     });
 
     test(`The forget method is called when a record deletion is fully persisted and the record unloaded`, async function(assert) {
+      this.owner.register('adapter:application', JSONAPIAdapter.extend());
+      this.owner.register('serializer:application', JSONAPISerializer.extend());
       const adapter = store.adapterFor('application');
 
       adapter.deleteRecord = () => {

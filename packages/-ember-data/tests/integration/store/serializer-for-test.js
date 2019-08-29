@@ -222,7 +222,7 @@ module('integration/store - serializerFor', function(hooks) {
       assert.ok(fallbackSerializer === serializer, 'We fell back to the fallback-serializer instance');
     });
 
-    test('specifying defaultSerializer on application serializer when there is a per-type serializer does not work', async function(assert) {
+    test('specifying defaultSerializer on application adapter when there is a per-type serializer does not work', async function(assert) {
       let { owner } = this;
       let appAdapterDidInit = false;
       let personAdapterDidInit = false;
@@ -291,7 +291,7 @@ module('integration/store - serializerFor', function(hooks) {
       assert.ok(defaultSerializer === serializer, 'We fell back to the fallback-serializer instance');
     });
 
-    test('specifying defaultSerializer on a fallback serializer when there is no per-type serializer does work', async function(assert) {
+    test('specifying defaultSerializer on a fallback adapter when there is no per-type serializer does work', async function(assert) {
       let { owner } = this;
       let appAdapterDidInit = false;
       let fallbackSerializerDidInit = false;

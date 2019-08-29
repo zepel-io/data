@@ -7,6 +7,7 @@ import { settled } from '@ember/test-helpers';
 import EmberObject from '@ember/object';
 import { attr, hasMany, belongsTo } from '@ember-data/model';
 import { RECORD_DATA_ERRORS } from '@ember-data/canary-features';
+import JSONAPISerializer from '@ember-data/serializer/json-api';
 
 class Person extends Model {
   // TODO fix the typing for naked attrs
@@ -261,6 +262,7 @@ module('integration/record-data - Custom RecordData Implementations', function(h
 
     owner.register('service:store', TestStore);
     owner.register('adapter:application', TestAdapter, { singleton: false });
+    owner.register('serializer:application', JSONAPISerializer.extend());
 
     store = owner.lookup('service:store');
 
@@ -454,11 +456,7 @@ module('integration/record-data - Custom RecordData Implementations', function(h
     assert.equal(house.get('landlord.name'), 'David', 'belongsTo get correctly looked up');
 
     house.set('landlord', runspired);
-    assert.equal(
-      house.get('landlord.name'),
-      'David',
-      'belongsTo does not change if RD did not notify'
-    );
+    assert.equal(house.get('landlord.name'), 'David', 'belongsTo does not change if RD did not notify');
   });
 
   test('Record Data custom belongsTo', async function(assert) {
@@ -599,11 +597,7 @@ module('integration/record-data - Custom RecordData Implementations', function(h
     assert.deepEqual(people.toArray(), [david], 'has many doesnt change if RD did not notify');
 
     people.removeObject(david);
-    assert.deepEqual(
-      people.toArray(),
-      [david],
-      'hasMany removal doesnt apply the change unless notified'
-    );
+    assert.deepEqual(people.toArray(), [david], 'hasMany removal doesnt apply the change unless notified');
 
     house.set('tenants', [igor]);
     assert.deepEqual(people.toArray(), [david], 'setDirtyHasMany doesnt apply unless notified');
