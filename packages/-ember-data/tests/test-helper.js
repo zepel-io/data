@@ -1,46 +1,43 @@
 import RSVP from 'rsvp';
-import resolver from './helpers/resolver';
-import { setResolver } from '@ember/test-helpers';
 import { start } from 'ember-qunit';
-
 import QUnit from 'qunit';
-import DS from 'ember-data';
-import { wait, asyncEqual, invokeAsync } from 'dummy/tests/helpers/async';
-
-// TODO get us to a setApplication world instead
-//   seems to require killing off createStore
-setResolver(resolver);
+import { wait } from 'dummy/tests/helpers/async';
+import { configure } from 'dummy/tests/helpers/assert-deprecations';
 
 const { assert } = QUnit;
-const transforms = {
-  boolean: DS.BooleanTransform.create(),
-  date: DS.DateTransform.create(),
-  number: DS.NumberTransform.create(),
-  string: DS.StringTransform.create(),
-};
+
+configure();
 
 QUnit.begin(() => {
+  function assertAllDeprecations(assert) {
+    if (typeof assert.test.expected === 'number') {
+      assert.test.expected += 1;
+    }
+    assert.expectNoDeprecation();
+  }
+  // ensure we don't regress quietly
+  // this plays nicely with `expectDeprecation`
+  QUnit.config.modules.forEach(mod => {
+    const hooks = (mod.hooks.afterEach = mod.hooks.afterEach || []);
+    // prevent nested modules from asserting multiple times
+    if (mod.parentModule === null) {
+      hooks.push(assertAllDeprecations);
+    }
+  });
+
   RSVP.configure('onerror', reason => {
     // only print error messages if they're exceptions;
     // otherwise, let a future turn of the event loop
     // handle the error.
+    // TODO kill this off
     if (reason && reason instanceof Error) {
       throw reason;
     }
   });
-
-  // Prevent all tests involving serialization to require a container
-  // TODO kill the need for this
-  DS.JSONSerializer.reopen({
-    transformFor(attributeType) {
-      return this._super(attributeType, true) || transforms[attributeType];
-    },
-  });
 });
 
+// TODO kill these off
 assert.wait = wait;
-assert.asyncEqual = asyncEqual;
-assert.invokeAsync = invokeAsync;
 assert.assertClean = function(promise) {
   return promise.then(
     this.wait(record => {
@@ -50,10 +47,12 @@ assert.assertClean = function(promise) {
   );
 };
 
+// TODO kill this off
 assert.contains = function(array, item) {
   this.ok(array.indexOf(item) !== -1, `array contains ${item}`);
 };
 
+// TODO kill this off
 assert.without = function(array, item) {
   this.ok(array.indexOf(item) === -1, `array doesn't contain ${item}`);
 };

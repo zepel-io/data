@@ -89,7 +89,7 @@ module('integration/adapter/store-adapter - DS.Store and DS.Adapter integration 
     );
   });
 
-  test('by default, createRecords calls createRecord once per record', function(assert) {
+  test('by default, createRecords calls createRecord once per record', async function(assert) {
     let store = this.owner.lookup('service:store');
     let adapter = store.adapterFor('application');
     let Person = store.modelFor('person');
@@ -131,15 +131,16 @@ module('integration/adapter/store-adapter - DS.Store and DS.Adapter integration 
       });
     });
 
-    return promise.then(records => {
-      tom = records.tom;
-      yehuda = records.yehuda;
+    const records = await promise;
+    tom = records.tom;
+    yehuda = records.yehuda;
 
-      assert.asyncEqual(tom, store.findRecord('person', 1), 'Once an ID is in, findRecord returns the same object');
-      assert.asyncEqual(yehuda, store.findRecord('person', 2), 'Once an ID is in, findRecord returns the same object');
-      assert.equal(get(tom, 'updatedAt'), 'now', 'The new information is received');
-      assert.equal(get(yehuda, 'updatedAt'), 'now', 'The new information is received');
-    });
+    const person1 = await store.findRecord('person', 1);
+    const person2 = await store.findRecord('person', 2);
+    assert.equal(tom, person1, 'Once an ID is in, findRecord returns the same object');
+    assert.equal(yehuda, person2, 'Once an ID is in, findRecord returns the same object');
+    assert.equal(get(tom, 'updatedAt'), 'now', 'The new information is received');
+    assert.equal(get(yehuda, 'updatedAt'), 'now', 'The new information is received');
   });
 
   test('by default, updateRecords calls updateRecord once per record', function(assert) {

@@ -1301,6 +1301,7 @@ module('integration/relationships/has_many - Has-Many Relationships', function(h
     {
       id: 'ember-data:evented-api-usage',
       until: '4.0',
+      count: 3,
     },
     function(assert) {
       assert.expect(6);

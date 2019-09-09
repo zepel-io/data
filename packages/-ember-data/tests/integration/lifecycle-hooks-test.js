@@ -31,6 +31,7 @@ module('integration/lifecycle_hooks - Lifecycle Hooks', function(hooks) {
     {
       id: 'ember-data:evented-api-usage',
       until: '4.0',
+      count: 1,
     },
     async function(assert) {
       let done = assert.async();
@@ -58,6 +59,7 @@ module('integration/lifecycle_hooks - Lifecycle Hooks', function(hooks) {
     {
       id: 'ember-data:evented-api-usage',
       until: '4.0',
+      count: 1,
     },
     async function(assert) {
       assert.expect(3);

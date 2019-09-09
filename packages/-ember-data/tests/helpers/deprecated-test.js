@@ -22,8 +22,16 @@ export function deprecatedTest(testName, deprecation, testCallback) {
     throw new Error(`deprecatedTest expects { id } to be a meaningful string`);
   }
 
+  async function interceptor(assert) {
+    await testCallback.call(this, assert);
+    if (typeof assert.test.expected === 'number') {
+      assert.test.expected += 1;
+    }
+    assert.expectDeprecation(deprecation.id, deprecation.count || 1);
+  }
+
   if (gte(VERSION, deprecation.until)) {
-    test(`DEPRECATION ${deprecation.id} until ${deprecation.until} | ${testName}`, testCallback);
+    test(`DEPRECATION ${deprecation.id} until ${deprecation.until} | ${testName}`, interceptor);
   } else {
     test(`DEPRECATION ${deprecation.id} until ${deprecation.until} | ${testName}`, function(assert) {
       if (deprecation.refactor === true) {

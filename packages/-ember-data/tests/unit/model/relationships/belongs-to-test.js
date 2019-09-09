@@ -18,7 +18,7 @@ module('unit/model/relationships - DS.belongsTo', function(hooks) {
     this.owner.register('serializer:application', JSONAPISerializer.extend());
   });
 
-  test('belongsTo lazily loads relationships as needed', function(assert) {
+  test('belongsTo lazily loads relationships as needed', async function(assert) {
     assert.expect(5);
 
     const Tag = DS.Model.extend({
@@ -79,21 +79,15 @@ module('unit/model/relationships - DS.belongsTo', function(hooks) {
       });
     });
 
-    return run(() => {
-      return store.findRecord('person', 1).then(person => {
-        assert.equal(get(person, 'name'), 'Tom Dale', 'precond - retrieves person record from store');
+    const person = await store.findRecord('person', 1);
+    assert.equal(get(person, 'name'), 'Tom Dale', 'precond - retrieves person record from store');
 
-        assert.equal(get(person, 'tag') instanceof Tag, true, 'the tag property should return a tag');
-        assert.equal(get(person, 'tag.name'), 'friendly', 'the tag shuld have name');
+    assert.equal(get(person, 'tag') instanceof Tag, true, 'the tag property should return a tag');
+    assert.equal(get(person, 'tag.name'), 'friendly', 'the tag shuld have name');
 
-        assert.strictEqual(get(person, 'tag'), get(person, 'tag'), 'the returned object is always the same');
-        assert.asyncEqual(
-          get(person, 'tag'),
-          store.findRecord('tag', 5),
-          'relationship object is the same as object retrieved directly'
-        );
-      });
-    });
+    assert.strictEqual(get(person, 'tag'), get(person, 'tag'), 'the returned object is always the same');
+    const tag5 = await store.findRecord('tag', 5);
+    assert.equal(get(person, 'tag'), tag5, 'relationship object is the same as object retrieved directly');
   });
 
   test('belongsTo does not notify when it is initially reified', function(assert) {
@@ -635,7 +629,7 @@ module('unit/model/relationships - DS.belongsTo', function(hooks) {
     run(() => store.peekRecord('person', 1).get('occupation'));
   });
 
-  test('belongsTo supports relationships to models with id 0', function(assert) {
+  test('belongsTo supports relationships to models with id 0', async function(assert) {
     assert.expect(5);
 
     const Tag = DS.Model.extend({
@@ -696,21 +690,15 @@ module('unit/model/relationships - DS.belongsTo', function(hooks) {
       });
     });
 
-    return run(() => {
-      return store.findRecord('person', 1).then(person => {
-        assert.equal(get(person, 'name'), 'Tom Dale', 'precond - retrieves person record from store');
+    const person = await store.findRecord('person', 1);
+    assert.equal(get(person, 'name'), 'Tom Dale', 'precond - retrieves person record from store');
 
-        assert.equal(get(person, 'tag') instanceof Tag, true, 'the tag property should return a tag');
-        assert.equal(get(person, 'tag.name'), 'friendly', 'the tag should have name');
+    assert.equal(get(person, 'tag') instanceof Tag, true, 'the tag property should return a tag');
+    assert.equal(get(person, 'tag.name'), 'friendly', 'the tag should have name');
 
-        assert.strictEqual(get(person, 'tag'), get(person, 'tag'), 'the returned object is always the same');
-        assert.asyncEqual(
-          get(person, 'tag'),
-          store.findRecord('tag', 0),
-          'relationship object is the same as object retrieved directly'
-        );
-      });
-    });
+    assert.strictEqual(get(person, 'tag'), get(person, 'tag'), 'the returned object is always the same');
+    const tag0 = await store.findRecord('tag', 0);
+    assert.equal(get(person, 'tag'), tag0, 'relationship object is the same as object retrieved directly');
   });
 
   testInDebug('belongsTo gives a warning when provided with a serialize option', function(assert) {

@@ -597,6 +597,7 @@ module('unit/model - Model', function(hooks) {
       {
         id: 'ember-data:evented-api-usage',
         until: '4.0',
+        count: 1,
       },
       async function(assert) {
         let count = 0;
@@ -625,6 +626,7 @@ module('unit/model - Model', function(hooks) {
       {
         id: 'ember-data:evented-api-usage',
         until: '4.0',
+        count: 1,
       },
       async function(assert) {
         let count = 0;
@@ -648,6 +650,7 @@ module('unit/model - Model', function(hooks) {
       {
         id: 'ember-data:evented-api-usage',
         until: '4.0',
+        count: 1,
       },
       async function(assert) {
         let eventMethodArgs = null;
