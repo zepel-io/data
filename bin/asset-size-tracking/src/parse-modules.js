@@ -28,6 +28,10 @@ module.exports = function parseModules(builtAsset) {
     if (name.indexOf('@ember-data/') === 0) {
       let subPackageEnd = name.indexOf('/', 12);
       packageName = name.substring(0, subPackageEnd);
+    } else if (name.indexOf('ember-inflector') === 0) {
+      packageName = 'ember-inflector';
+    } else if (name.indexOf('@ember/ordered-set') === 0) {
+      packageName = '@ember/ordered-set';
     }
 
     library.getPackage(packageName).addModule(name, m);
