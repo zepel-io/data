@@ -1,5 +1,5 @@
 const Library = require('./library');
-const moduleNames = ['ember-data', '@ember-data'];
+const moduleNames = ['ember-data', '@ember-data', '@ember/ordered-set', 'ember-inflector'];
 
 module.exports = function parseModules(builtAsset) {
   let modules = builtAsset
