@@ -50,12 +50,14 @@ class Library {
       modules: this.packages.reduce((v, c) => v + c.modules.length, 0),
     });
     this.packages.forEach(p => p.print());
-    this.packages.forEach(p => {
-      p.modules.forEach(m => {
-        console.log('\n\n');
-        console.log(m.code);
+    if (showModules) {
+      this.packages.forEach(p => {
+        p.modules.forEach(m => {
+          console.log('\n\n');
+          console.log(m.code);
+        });
       });
-    });
+    }
   }
   toJSON() {
     return {
