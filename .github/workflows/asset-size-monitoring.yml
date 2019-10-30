@@ -33,7 +33,6 @@ jobs:
           git config --local user.email "tomster@emberjs.com"
           git config --local user.name "AssetSize Tomster"
           git remote set-url origin "https://$GITHUB_ACTOR:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git"
-          git pull github $GITHUB_REF --ff-only
           git checkout -b asset-report/$GITHUB_SHA
       - name: Commit Report w/Analysis
         run: |
