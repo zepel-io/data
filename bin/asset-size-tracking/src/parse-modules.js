@@ -3,8 +3,8 @@ const moduleNames = ['ember-data', '@ember-data', '@ember/ordered-set', 'ember-i
 
 module.exports = function parseModules(builtAsset) {
   let modules = builtAsset
-    .split('define("')
-    .join('MODULE_SPLIT_POINTdefine("')
+    .split('define(')
+    .join('MODULE_SPLIT_POINTdefine(')
     .split('MODULE_SPLIT_POINT');
 
   modules = modules.filter(mod => {
