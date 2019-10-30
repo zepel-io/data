@@ -28,12 +28,12 @@ jobs:
           git config --local user.email "tomster@emberjs.com"
           git config --local user.name "AssetSize Tomster"
           git remote set-url origin "https://$GITHUB_ACTOR:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git"
-          git pull github ${{GITHUB_REF}} --ff-only
-          git checkout -b asset-report/${{GITHUB_SHA}}
+          git pull github $GITHUB_REF --ff-only
+          git checkout -b asset-report/$GITHUB_SHA
       - name: Commit Report
         run: |
           git add bin/asset-size-tracking/current-data.json
           git commit -m "AssetSize Update for $GITHUB_SHA"
       - name: Push Report
         run: |
-          git push origin asset-report/${{GITHUB_SHA}}
+          git push origin asset-report/$GITHUB_SHA
