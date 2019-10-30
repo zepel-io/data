@@ -35,4 +35,5 @@ jobs:
           git add bin/asset-size-tracking/current-data.json
           git commit -m "AssetSize Update for ${{GITHUB_SHA}}"
       - name: Push Report
-          run: git push origin asset-report/${{GITHUB_SHA}}
+        run: |
+          git push origin asset-report/${{GITHUB_SHA}}
