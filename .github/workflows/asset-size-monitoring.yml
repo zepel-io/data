@@ -1,7 +1,6 @@
 name: AssetSizeMonitor
 
 on:
-  pull_request:
   push:
     branches:
       - feat/asset-size-report
