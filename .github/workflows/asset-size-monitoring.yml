@@ -20,9 +20,13 @@ jobs:
       - name: Build For Production
         run: yarn workspace ember-data ember build -e production
       - name: Generate Diff for Commit
-        run: node ./bin/asset-size-tracking/generate-diff.js > tmp/report.log
+        run: |
+          mkdir -p tmp
+          diff_report=$(node ./bin/asset-size-tracking/generate-diff.js)
       - name: Update Asset Sizes
         run: node ./bin/asset-size-tracking/generate-analysis.js
+      - name: Print Asset Sizes
+          full_analysis=$(node ./bin/asset-size-tracking/print-analysis.js)
       - name: Configure Git User
         run: |
           git config --local user.email "tomster@emberjs.com"
@@ -33,7 +37,7 @@ jobs:
       - name: Commit Report
         run: |
           git add bin/asset-size-tracking/current-data.json
-          git commit -m "AssetSize Update for $GITHUB_SHA"
+          git commit -m "AssetSize Update for $GITHUB_SHA\n\n$diff_report\n\n$full_analysis"
       - name: Push Report
         run: |
           git push origin asset-report/$GITHUB_SHA
