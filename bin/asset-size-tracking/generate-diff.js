@@ -7,7 +7,7 @@ const parseModules = require('./src/parse-modules');
 const getBuiltDist = require('./src/get-built-dist');
 const chalk = require('chalk');
 const library_failure_threshold = 70;
-const package_failure_threshold = 30;
+const package_warn_threshold = 30;
 
 let BASE_DATA_FILE = process.argv[2] || false;
 let NEW_VENDOR_FILE = process.argv[3] || false;
@@ -75,6 +75,7 @@ const diff = getDiff(current_library, new_library);
 
 function analyzeDiff(diff) {
   let failures = [];
+  let warnings = [];
 
   if (diff.currentSize < diff.newSize) {
     let delta = diff.newSize - diff.currentSize;
@@ -88,15 +89,13 @@ function analyzeDiff(diff) {
   diff.packages.forEach(pkg => {
     if (pkg.currentSize < pkg.newSize) {
       let delta = pkg.newSize - pkg.currentSize;
-      if (delta > package_failure_threshold) {
-        failures.push(
-          `The compressed size of the package ${pkg.name} has increased by ${delta} bytes which exceeds the failure threshold of ${package_failure_threshold} bytes.`
-        );
+      if (delta > package_warn_threshold) {
+        warnings.push(`The compressed size of the package ${pkg.name} has increased by ${delta} bytes.`);
       }
     }
   });
 
-  return failures;
+  return { failures, warnings };
 }
 
 function printDiff(diff) {
@@ -151,12 +150,16 @@ function leftPad(str, len, char = ' ') {
 }
 
 printDiff(diff);
-const failures = analyzeDiff(diff);
+const { failures, warnings } = analyzeDiff(diff);
 
 if (failures.length) {
   console.log('Failed Checks\n-----------------------');
   failures.forEach(f => {
     console.log(f);
+  });
+  console.log('Warnings\n-----------------------');
+  warnings.forEach(w => {
+    console.log(w);
   });
   process.exit(1);
 } else {

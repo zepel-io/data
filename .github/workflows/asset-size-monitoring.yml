@@ -1,0 +1,37 @@
+name: AssetSizeMonitor
+
+on:
+  pull_request:
+  push:
+    branches:
+      - feat/asset-size-report
+
+jobs:
+  update-asset-sizes:
+    runs-on: macOS-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install dependencies
+        run: yarn install
+      - name: Build For Production
+        run: yarn workspace ember-data ember build -e production
+      - name: Generate Diff for Commit
+        run: node ./bin/asset-size-tracking/generate-diff.js > tmp/report.log
+      - name: Update Asset Sizes
+        run: node ./bin/asset-size-tracking/generate-analysis.js
+      - name: Commit Updates
+        run: |
+          git config --local user.email "tomster@emberjs.com"
+          git config --local user.name "AssetSize Tomster"
+
+          git remote set-url origin "https://${{GITHUB_ACTOR}}:${{GITHUB_TOKEN}}@github.com/${{GITHUB_REPOSITORY}}.git"
+          git pull github ${{GITHUB_REF}} --ff-only
+
+          git checkout -b asset-report/${{GITHUB_SHA}}
+          git add bin/asset-size-tracking/current-data.json
+          git commit -m "AssetSize Update for ${{GITHUB_SHA}}"
+          git push origin asset-report/${{GITHUB_SHA}}
