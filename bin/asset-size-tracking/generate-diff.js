@@ -6,6 +6,8 @@ const Library = require('./src/library');
 const parseModules = require('./src/parse-modules');
 const getBuiltDist = require('./src/get-built-dist');
 const chalk = require('chalk');
+const library_failure_threshold = 70;
+const package_failure_threshold = 30;
 
 let BASE_DATA_FILE = process.argv[2] || false;
 let NEW_VENDOR_FILE = process.argv[3] || false;
@@ -73,6 +75,27 @@ const diff = getDiff(current_library, new_library);
 
 function analyzeDiff(diff) {
   let failures = [];
+
+  if (diff.currentSize < diff.newSize) {
+    let delta = diff.newSize - diff.currentSize;
+    if (delta > library_failure_threshold) {
+      failures.push(
+        `The compressed size of the library ${diff.name} has increased by ${delta} bytes which exceeds the failure threshold of ${library_failure_threshold} bytes.`
+      );
+    }
+  }
+
+  diff.packages.forEach(pkg => {
+    if (pkg.currentSize < pkg.newSize) {
+      let delta = pkg.newSize - pkg.currentSize;
+      if (delta > package_failure_threshold) {
+        failures.push(
+          `The compressed size of the package ${pkg.name} has increased by ${delta} bytes which exceeds the failure threshold of ${package_failure_threshold} bytes.`
+        );
+      }
+    }
+  });
+
   return failures;
 }
 
@@ -98,7 +121,7 @@ function printItem(item, indent = 0) {
 
 function formatDelta(item) {
   if (item.currentSize === item.newSize) {
-    return;
+    return '';
   }
   if (item.currentSize > item.newSize) {
     return chalk.green(` (- ${formatBytes(item.currentSize - item.newSize)})`);
@@ -126,4 +149,14 @@ function leftPad(str, len, char = ' ') {
 }
 
 printDiff(diff);
-analyzeDiff(diff);
+const failures = analyzeDiff(diff);
+
+if (failures.length) {
+  console.log('Failed Checks\n-----------------------');
+  failures.forEach(f => {
+    console.log(f);
+  });
+  process.exit(1);
+} else {
+  process.exit(0);
+}
