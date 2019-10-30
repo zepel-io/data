@@ -110,13 +110,15 @@ function printDiff(diff) {
 }
 
 function printItem(item, indent = 0) {
-  const indentColor = indent >= 4 ? 'grey' : indent >= 2 ? 'yellow' : indent >= 0 ? 'magenta' : 'green';
-  console.log(
-    leftPad(
-      chalk[indentColor](item.name) + ' ' + chalk.white(formatBytes(item.newSize)) + formatDelta(item),
-      indent * 2
-    )
-  );
+  if (item.currentSize !== item.newSize) {
+    const indentColor = indent >= 4 ? 'grey' : indent >= 2 ? 'yellow' : indent >= 0 ? 'magenta' : 'green';
+    console.log(
+      leftPad(
+        chalk[indentColor](item.name) + ' ' + chalk.white(formatBytes(item.newSize)) + formatDelta(item),
+        indent * 2
+      )
+    );
+  }
 }
 
 function formatDelta(item) {
