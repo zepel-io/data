@@ -77,6 +77,21 @@ jobs:
       - name: Basic Tests
         run: yarn test
 
+  asset-size-check:
+    needs: [lint, basic-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
+      - name: Install dependencies
+        run: yarn install
+      - name: Build For Production
+        run: yarn workspace ember-data ember build -e production
+      - name: Test Asset Sizes
+        run: node ./bin/asset-size-tracking/generate-diff.js
+
   lts:
     needs: [lint, basic-tests]
     strategy:
