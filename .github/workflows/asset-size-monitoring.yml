@@ -21,13 +21,13 @@ jobs:
       - name: Generate Diff for Commit
         run: |
           mkdir -p tmp
-          diff_report=$(node ./bin/asset-size-tracking/generate-diff.js)
+          node ./bin/asset-size-tracking/generate-diff.js > tmp/diff.txt
       - name: Update Asset Sizes
         run: |
           node ./bin/asset-size-tracking/generate-analysis.js
       - name: Print Asset Sizes
         run: |
-          full_analysis=$(node ./bin/asset-size-tracking/print-analysis.js)
+          node ./bin/asset-size-tracking/print-analysis.js > tmp/analysis.txt
       - name: Configure Git User
         run: |
           git config --local user.email "tomster@emberjs.com"
@@ -36,6 +36,8 @@ jobs:
           git checkout -b asset-report/$GITHUB_SHA
       - name: Commit Report w/Analysis
         run: |
+          diff_report=$(cat tmp/diff.txt)
+          full_analysis=$(cat tmp/analysis.txt)
           git add bin/asset-size-tracking/current-data.json
           git commit -m "AssetSize Update for $GITHUB_SHA\n\n$diff_report\n\n$full_analysis"
       - name: Push Report

@@ -1,0 +1,7 @@
+Retrieving: /Users/cthoburn/Github/data/packages/-ember-data/dist/assets/vendor.js
+EmberData 43.42 KB (+ 60 B)
+    @ember-data/adapter 4.82 KB (- 20 B)
+    @ember-data/serializer 4.70 KB (+ 20 B)
+    ember-inflector 2.22 KB (+ 3 B)
+    ember-data 1.82 KB (- 4 B)
+    @ember-data/canary-features 512 B (- 3 B)
