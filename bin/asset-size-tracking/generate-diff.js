@@ -5,6 +5,7 @@ const path = require('path');
 const Library = require('./src/library');
 const parseModules = require('./src/parse-modules');
 const getBuiltDist = require('./src/get-built-dist');
+const chalk = require('chalk');
 
 let BASE_DATA_FILE = process.argv[2] || false;
 let NEW_VENDOR_FILE = process.argv[3] || false;
@@ -70,4 +71,59 @@ function getDiff(oldLibrary, newLibrary) {
 
 const diff = getDiff(current_library, new_library);
 
-console.log(JSON.stringify(diff, null, 2));
+function analyzeDiff(diff) {
+  let failures = [];
+  return failures;
+}
+
+function printDiff(diff) {
+  printItem(diff);
+  diff.packages.forEach(pkg => {
+    printItem(pkg, 2);
+    pkg.modules.forEach(m => {
+      printItem(m, 4);
+    });
+  });
+}
+
+function printItem(item, indent = 0) {
+  const indentColor = indent >= 4 ? 'grey' : indent >= 2 ? 'yellow' : indent >= 0 ? 'magenta' : 'green';
+  console.log(
+    leftPad(
+      chalk[indentColor](item.name) + ' ' + chalk.white(formatBytes(item.newSize)) + formatDelta(item),
+      indent * 2
+    )
+  );
+}
+
+function formatDelta(item) {
+  if (item.currentSize === item.newSize) {
+    return;
+  }
+  if (item.currentSize > item.newSize) {
+    return chalk.green(` (- ${formatBytes(item.currentSize - item.newSize)})`);
+  } else {
+    return chalk.red(` (+ ${formatBytes(item.newSize - item.currentSize)})`);
+  }
+}
+
+function formatBytes(b) {
+  let str;
+  if (b > 1024) {
+    str = (b / 1024).toFixed(2) + ' KB';
+  } else {
+    str = b + ' B';
+  }
+
+  return str;
+}
+
+function leftPad(str, len, char = ' ') {
+  for (let i = 0; i < len; i++) {
+    str = char + str;
+  }
+  return str;
+}
+
+printDiff(diff);
+analyzeDiff(diff);
