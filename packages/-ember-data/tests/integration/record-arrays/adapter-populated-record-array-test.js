@@ -288,10 +288,10 @@ module('integration/record-arrays/adapter_populated_record_array - AdapterPopula
     });
   });
 
-  test('when an adapter populated record gets updated the array contents are also updated', function(assert) {
+  test('when an adapter populated record gets updated the array contents are also updated', async function(assert) {
     assert.expect(8);
 
-    let queryPromise, queryArr, findPromise, findArray;
+    let queryArr, findArray;
     let store = this.owner.lookup('service:store');
     let adapter = store.adapterFor('application');
     let array = [{ id: '1', type: 'person', attributes: { name: 'Scumbag Dale' } }];
@@ -307,42 +307,28 @@ module('integration/record-arrays/adapter_populated_record_array - AdapterPopula
       return { data: array.slice(0) };
     };
 
-    run(() => {
-      queryPromise = store.query('person', { slice: 1 });
-      findPromise = store.findAll('person');
+    queryArr = await store.query('person', { slice: 1 });
+    findArray = await store.findAll('person');
 
-      // initialize adapter populated record array and assert initial state
-      queryPromise.then(_queryArr => {
-        queryArr = _queryArr;
-        assert.equal(queryArr.get('length'), 0, 'No records for this query');
-        assert.equal(queryArr.get('isUpdating'), false, 'Record array isUpdating state updated');
-      });
-
-      // initialize a record collection array and assert initial state
-      findPromise.then(_findArr => {
-        findArray = _findArr;
-        assert.equal(findArray.get('length'), 1, 'All records are included in collection array');
-      });
-    });
+    assert.equal(queryArr.get('length'), 0, 'No records for this query');
+    assert.equal(queryArr.get('isUpdating'), false, 'Record array isUpdating state updated');
+    assert.equal(findArray.get('length'), 1, 'All records are included in collection array');
+    debugger;
 
     // a new element gets pushed in record array
-    run(() => {
-      array.push({ id: '2', type: 'person', attributes: { name: 'Scumbag Katz' } });
-      queryArr.update().then(() => {
-        assert.equal(queryArr.get('length'), 1, 'The new record is returned and added in adapter populated array');
-        assert.equal(queryArr.get('isUpdating'), false, 'Record array isUpdating state updated');
-        assert.equal(findArray.get('length'), 2);
-      });
-    });
+    array.push({ id: '2', type: 'person', attributes: { name: 'Scumbag Katz' } });
+    await queryArr.update();
+
+    assert.equal(queryArr.get('length'), 1, 'The new record is returned and added in adapter populated array');
+    assert.equal(queryArr.get('isUpdating'), false, 'Record array isUpdating state updated');
+    assert.equal(findArray.get('length'), 2);
 
     // element gets removed
-    run(() => {
-      array.pop(0);
-      queryArr.update().then(() => {
-        assert.equal(queryArr.get('length'), 0, 'Record removed from array');
-        // record not removed from the model collection
-        assert.equal(findArray.get('length'), 2, 'Record still remains in collection array');
-      });
-    });
+    array.pop(0);
+    await queryArr.update();
+
+    assert.equal(queryArr.get('length'), 0, 'Record removed from array');
+    // record not removed from the model collection
+    assert.equal(findArray.get('length'), 2, 'Record still remains in collection array');
   });
 });

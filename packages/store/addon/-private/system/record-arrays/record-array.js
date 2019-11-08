@@ -4,11 +4,21 @@
 import DeprecatedEvented from '../deprecated-evented';
 
 import ArrayProxy from '@ember/array/proxy';
+import { A } from '@ember/array';
 import { set, get, computed } from '@ember/object';
 import { Promise } from 'rsvp';
 import { DEBUG } from '@glimmer/env';
 import { PromiseArray } from '../promise-proxies';
 import SnapshotRecordArray from '../snapshot-record-array';
+import { internalModelFactoryFor } from '../store/internal-model-factory';
+
+function recordForIdentifier(store, identifier) {
+  return internalModelForIdentifier(store, identifier).getRecord();
+}
+
+function internalModelForIdentifier(store, identifier) {
+  return internalModelFactoryFor(store).lookup(identifier);
+}
 
 /**
   A record array is an array that contains records of a certain modelName. The record
@@ -23,8 +33,9 @@ import SnapshotRecordArray from '../snapshot-record-array';
 */
 
 export default ArrayProxy.extend(DeprecatedEvented, {
-  init() {
-    this._super(...arguments);
+  init(args) {
+    this.content = args.content = args.content ? A(args.content.map(im => im.identifier)) : null;
+    this._super(args);
 
     if (DEBUG) {
       this._getDeprecatedEventedInfo = () => `RecordArray containing ${this.modelName}`;
@@ -40,7 +51,6 @@ export default ArrayProxy.extend(DeprecatedEvented, {
       @private
       @type Ember.Array
       */
-    this.set('content', this.content || null);
 
     /**
     The flag to signal a `RecordArray` is finished loading data.
@@ -112,8 +122,9 @@ export default ArrayProxy.extend(DeprecatedEvented, {
     @return {Model} record
   */
   objectAtContent(index) {
-    let internalModel = get(this, 'content').objectAt(index);
-    return internalModel && internalModel.getRecord();
+    let identifier = get(this, 'content').objectAt(index);
+
+    return identifier ? recordForIdentifier(this.store, identifier) : undefined;
   },
 
   /**
@@ -174,7 +185,7 @@ export default ArrayProxy.extend(DeprecatedEvented, {
     // pushObjects because the internalModels._recordArrays set was already
     // consulted for inclusion, so addObject and its on .contains call is not
     // required.
-    get(this, 'content').pushObjects(internalModels);
+    get(this, 'content').pushObjects(internalModels.map(im => im.identifier));
   },
 
   /**
@@ -185,7 +196,7 @@ export default ArrayProxy.extend(DeprecatedEvented, {
     @param {InternalModel} internalModel
   */
   _removeInternalModels(internalModels) {
-    get(this, 'content').removeObjects(internalModels);
+    get(this, 'content').removeObjects(internalModels.map(im => im.identifier));
   },
 
   /**
@@ -216,7 +227,8 @@ export default ArrayProxy.extend(DeprecatedEvented, {
   },
 
   _dissociateFromOwnRecords() {
-    this.get('content').forEach(internalModel => {
+    this.get('content').forEach(identifier => {
+      let internalModel = internalModelForIdentifier(this.store, identifier);
       let recordArrays = internalModel.__recordArrays;
 
       if (recordArrays) {
@@ -262,6 +274,6 @@ export default ArrayProxy.extend(DeprecatedEvented, {
     @private
   */
   _takeSnapshot() {
-    return get(this, 'content').map(internalModel => internalModel.createSnapshot());
+    return get(this, 'content').map(identifier => internalModelForIdentifier(identifier).createSnapshot());
   },
 });

@@ -12,6 +12,21 @@ import { internalModelFactoryFor } from './store/internal-model-factory';
 
 const emberRun = emberRunloop.backburner;
 
+// this file
+// step 1. no property access on internalModels
+// step 2. no method calls on internalModels
+// step 3. method calls on Recordarray give identifiers instead of internalModels
+
+// record-array
+// step 3. method calls to RecordArrayManager give identifiers instead of internalModels
+// step 4. RecordArray uses only store, identifier, recordArray manager to hand out records
+
+// this file
+// core-store.ts
+// maybe internalModel
+// step 5. calls to record-array-manager pass identifiers
+// step 5. record-array-manager expects to receive identifiers
+
 /**
   @class RecordArrayManager
   @private

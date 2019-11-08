@@ -82,7 +82,7 @@ export default RecordArray.extend({
     // TODO: initial load should not cause change events at all, only
     // subsequent. This requires changing the public api of adapter.query, but
     // hopefully we can do that soon.
-    this.get('content').setObjects(internalModels);
+    this.get('content').setObjects(internalModels.map(im => im.identifier));
 
     this.setProperties({
       isLoaded: true,
