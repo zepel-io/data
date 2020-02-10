@@ -1,6 +1,6 @@
 const Library = require('./library');
 
-const moduleNames = ['ember-data', '@ember-data', '@ember/ordered-set', 'ember-inflector'];
+const moduleNames = ['ember-cli-pemberly-m3'];
 
 module.exports = function parseModules(builtAsset) {
   let modules = builtAsset
@@ -11,7 +11,7 @@ module.exports = function parseModules(builtAsset) {
   modules = modules.filter(mod => {
     for (let i = 0; i < moduleNames.length; i++) {
       let projectName = moduleNames[i];
-      if (mod.indexOf(projectName) === 8) {
+      if (mod.indexOf(projectName) > -1) {
         return true;
       }
     }
@@ -24,16 +24,7 @@ module.exports = function parseModules(builtAsset) {
     let end = m.indexOf(',', 8) - 1;
     let name = m.substring(8, end);
 
-    let packageName = 'ember-data';
-
-    if (name.indexOf('@ember-data/') === 0) {
-      let subPackageEnd = name.indexOf('/', 12);
-      packageName = name.substring(0, subPackageEnd);
-    } else if (name.indexOf('ember-inflector') === 0) {
-      packageName = 'ember-inflector';
-    } else if (name.indexOf('@ember/ordered-set') === 0) {
-      packageName = '@ember/ordered-set';
-    }
+    let packageName = 'ember-cli-pemberly-m3';
 
     library.getPackage(packageName).addModule(name, m);
   });

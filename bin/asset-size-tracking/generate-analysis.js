@@ -15,7 +15,7 @@ let OUTPUT_FILE = process.argv[3] || './current-data.json';
 const parseModules = require('./src/parse-modules');
 const getBuiltDist = require('./src/get-built-dist');
 
-const builtAsset = getBuiltDist(path.join(INPUT_DIST, 'assets/vendor.js'));
+const builtAsset = getBuiltDist(path.join(INPUT_DIST, 'assets/vendor-1ad304ff7b01abe358104eb9c437654f.js'));
 const library = parseModules(builtAsset);
 const outputPath = path.resolve(__dirname, OUTPUT_FILE);
 
