@@ -2,6 +2,7 @@
 
 import { get } from '@ember/object';
 import { run } from '@ember/runloop';
+import { settled } from '@ember/test-helpers';
 
 import { module, test } from 'qunit';
 import { all, Promise as EmberPromise } from 'rsvp';
@@ -167,8 +168,6 @@ module('integration/deletedRecord - Deleting Records', function(hooks) {
           },
         ],
       });
-      let adam = store.peekRecord('person', 1);
-      let dave = store.peekRecord('person', 2);
     });
     var all = store.peekAll('person');
 
@@ -185,9 +184,7 @@ module('integration/deletedRecord - Deleting Records', function(hooks) {
     assert.equal(all.objectAt(0), null, "can't get any records");
   });
 
-  test('Deleting an invalid newly created record should remove it from the store', function(assert) {
-    var record;
-
+  test('Deleting an invalid newly created record should remove it from the store', async function(assert) {
     let store = this.owner.lookup('service:store');
     let adapter = store.adapterFor('application');
 
@@ -205,31 +202,27 @@ module('integration/deletedRecord - Deleting Records', function(hooks) {
       );
     };
 
-    run(function() {
-      record = store.createRecord('person', { name: 'pablobm' });
-      // Invalidate the record to put it in the `root.loaded.created.invalid` state
-      record.save().catch(() => {});
-    });
+    let record = store.createRecord('person', { name: 'pablobm' });
+    // Invalidate the record to put it in the `root.loaded.created.invalid` state
+    await record.save().catch(() => {});
 
     // Preconditions
     assert.equal(
-      get(record, 'currentState.stateName'),
+      record.currentState.stateName,
       'root.loaded.created.invalid',
       'records should start in the created.invalid state'
     );
     assert.equal(get(store.peekAll('person'), 'length'), 1, 'The new person should be in the store');
 
-    run(function() {
-      record.deleteRecord();
-    });
+    let internalModel = record._internalModel;
 
-    assert.equal(get(record, 'currentState.stateName'), 'root.deleted.saved');
+    record.deleteRecord();
+
+    assert.equal(internalModel.currentState.stateName, 'root.empty', 'new person state is empty');
     assert.equal(get(store.peekAll('person'), 'length'), 0, 'The new person should be removed from the store');
   });
 
-  test('Destroying an invalid newly created record should remove it from the store', function(assert) {
-    let record;
-
+  test('Destroying an invalid newly created record should remove it from the store', async function(assert) {
     let store = this.owner.lookup('service:store');
     let adapter = store.adapterFor('application');
 
@@ -251,11 +244,9 @@ module('integration/deletedRecord - Deleting Records', function(hooks) {
       );
     };
 
-    run(function() {
-      record = store.createRecord('person', { name: 'pablobm' });
-      // Invalidate the record to put it in the `root.loaded.created.invalid` state
-      record.save().catch(() => {});
-    });
+    let record = store.createRecord('person', { name: 'pablobm' });
+    // Invalidate the record to put it in the `root.loaded.created.invalid` state
+    await record.save().catch(() => {});
 
     // Preconditions
     assert.equal(
@@ -265,11 +256,11 @@ module('integration/deletedRecord - Deleting Records', function(hooks) {
     );
     assert.equal(get(store.peekAll('person'), 'length'), 1, 'The new person should be in the store');
 
-    run(function() {
-      record.destroyRecord();
-    });
+    let internalModel = record._internalModel;
 
-    assert.equal(get(record, 'currentState.stateName'), 'root.deleted.saved');
+    await record.destroyRecord();
+
+    assert.equal(internalModel.currentState.stateName, 'root.empty', 'new person state is empty');
     assert.equal(get(store.peekAll('person'), 'length'), 0, 'The new person should be removed from the store');
   });
 
@@ -300,5 +291,77 @@ module('integration/deletedRecord - Deleting Records', function(hooks) {
     });
 
     return all(promises);
+  });
+
+  test('Calling save on a newly created then deleted record should not error', async function(assert) {
+    let store = this.owner.lookup('service:store');
+    let adapter = store.adapterFor('application');
+
+    adapter.createRecord = function() {
+      assert.fail('We should not call adapter.createRecord on save');
+    };
+    adapter.updateRecord = function() {
+      assert.fail('We should not call adapter.updateRecord on save');
+    };
+    adapter.deleteRecord = function() {
+      assert.fail('We should not call adapter.deleteRecord on save');
+    };
+
+    let record = store.createRecord('person', { name: 'pablobm' });
+
+    assert.equal(get(store.peekAll('person'), 'length'), 1, 'The new person should be in the store');
+
+    let internalModel = record._internalModel;
+
+    record.deleteRecord();
+
+    // it is uncertain that `root.empty` vs `root.deleted.saved` afterwards is correct
+    //   but this is the expected result of `unloadRecord`. We may want a `root.deleted.saved.unloaded` state?
+    assert.equal(internalModel.currentState.stateName, 'root.empty', 'We reached the correct persisted saved state');
+    assert.equal(get(store.peekAll('person'), 'length'), 0, 'The new person should be removed from the store');
+
+    // let cache = store._identityMap._map.person._models;
+
+    // assert.ok(cache.indexOf(internalModel) === -1, 'The internal model is removed from the cache');
+    assert.equal(internalModel.isDestroyed, true, 'The internal model is destroyed');
+
+    await record.save();
+  });
+
+  test('Calling unloadRecord on a newly created then deleted record should not error', async function(assert) {
+    let store = this.owner.lookup('service:store');
+    let adapter = store.adapterFor('application');
+
+    adapter.createRecord = function() {
+      assert.fail('We should not call adapter.createRecord on save');
+    };
+    adapter.updateRecord = function() {
+      assert.fail('We should not call adapter.updateRecord on save');
+    };
+    adapter.deleteRecord = function() {
+      assert.fail('We should not call adapter.deleteRecord on save');
+    };
+
+    let record = store.createRecord('person', { name: 'pablobm' });
+
+    assert.equal(get(store.peekAll('person'), 'length'), 1, 'The new person should be in the store');
+
+    let internalModel = record._internalModel;
+
+    record.deleteRecord();
+    await settled();
+
+    // it is uncertain that `root.empty` vs `root.deleted.saved` afterwards is correct
+    //   but this is the expected result of `unloadRecord`. We may want a `root.deleted.saved.unloaded` state?
+    assert.equal(internalModel.currentState.stateName, 'root.empty', 'We reached the correct persisted saved state');
+    assert.equal(get(store.peekAll('person'), 'length'), 0, 'The new person should be removed from the store');
+
+    // let cache = store._identityMap._map.person._models;
+
+    // assert.ok(cache.indexOf(internalModel) === -1, 'The internal model is removed from the cache');
+    assert.equal(internalModel.isDestroyed, true, 'The internal model is destroyed');
+
+    record.unloadRecord();
+    await settled();
   });
 });

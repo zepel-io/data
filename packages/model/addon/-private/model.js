@@ -1,6 +1,7 @@
 import { assert, deprecate, warn } from '@ember/debug';
 import EmberError from '@ember/error';
 import EmberObject, { computed, get } from '@ember/object';
+import { run } from '@ember/runloop';
 import { isNone } from '@ember/utils';
 import { DEBUG } from '@glimmer/env';
 import Ember from 'ember';
@@ -71,7 +72,7 @@ function findPossibleInverses(type, inverseType, name, relationshipsSoFar) {
 }
 
 const retrieveFromCurrentState = computed('currentState', function(key) {
-  return get(this._internalModel.currentState, key);
+  return this._internalModel.currentState[key];
 }).readOnly();
 
 const isValidRecordData = computed('errors.length', function(key) {
@@ -776,7 +777,12 @@ const Model = EmberObject.extend(DeprecatedEvented, {
   */
   destroyRecord(options) {
     this.deleteRecord();
-    return this.save(options);
+    return this.save(options).then(_ => {
+      run(() => {
+        this.unloadRecord();
+      });
+      return this;
+    });
   },
 
   /**

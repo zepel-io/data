@@ -149,6 +149,7 @@ export default class InternalModel {
   _pendingRecordArrayManagerFlush: boolean;
   _isDematerializing: boolean;
   isReloading: boolean;
+  _deletedRecordWasNew: boolean;
   _doNotDestroy: boolean;
   isDestroying: boolean;
 
@@ -507,10 +508,24 @@ export default class InternalModel {
         this._recordData.setIsDeleted(true);
       }
     }
-    this.send('deleteRecord');
+
+    if (this.isNew()) {
+      // destroyRecord follows up deleteRecord with save(). This prevents an unecessary save for a new record
+      this._deletedRecordWasNew = true;
+      run(() => {
+        this.send('deleteRecord');
+        this._triggerDeferredTriggers();
+        this.unloadRecord();
+      });
+    } else {
+      this.send('deleteRecord');
+    }
   }
 
   save(options) {
+    if (this._deletedRecordWasNew) {
+      return Promise.resolve();
+    }
     let promiseLabel = 'DS: Model#save ' + this;
     let resolver = RSVP.defer<InternalModel>(promiseLabel);
 
