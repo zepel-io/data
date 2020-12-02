@@ -309,7 +309,7 @@ class RESTAdapter extends Adapter.extend(BuildURLMixin) {
   }
 
   set fastboot(value) {
-    return (this._fastboot = value);
+    this._fastboot = value;
   }
 
   /**
@@ -1464,7 +1464,6 @@ if (DEPRECATE_NAJAX) {
 
     set(value) {
       addSymbol(this, UseFetch, value);
-      return value;
     },
   });
 } else {
